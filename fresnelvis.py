@@ -8,7 +8,8 @@ from skimage.color import rgba2rgb, rgb2gray
 import igl
 
 dflt_camera = dict(camPos=np.array([2,2,2]), camLookat=np.array([0.,0.,0.]),\
-    camUp=np.array([0,1,0]),camHeight=2, fit_camera=False, \
+    camUp=np.array([0,1,0]),camHeight=2, fit_camera=False, 
+    camera_type = "orthogonal", \
     light_samples=32, samples=32, resolution=(256,256))
 gold_color = np.array([253, 204, 134])/256
 gray_color = np.array([0.9, 0.9, 0.9])
@@ -261,10 +262,7 @@ def render_cloud(cloud, camera_kwargs={}, render_kwargs={}, **kwargs):
 class FresnelRenderer():
     def __init__(self, camera_kwargs={}, lights="rembrandt", **kwargs):
         self.setup_scene(camera_kwargs=camera_kwargs, lights=lights)
-    def setup_scene(self, camera_kwargs={}, lights="rembrandt"):
-        device = fresnel.Device()
-        scene = fresnel.Scene(device)
-
+    def setup_camera(self, camera_kwargs={}):
         self.camera_opt = camera_opt = copy.deepcopy(dflt_camera)
         camera_opt.update(camera_kwargs)
         self.camera_kwargs = camera_opt
@@ -273,11 +271,24 @@ class FresnelRenderer():
             print("Camera is not setup, now auto-fit camera")
             scene.camera = fresnel.camera.fit(scene,margin=0)
         else:
-            camPos    = camera_opt["camPos"]
-            camLookat = camera_opt["camLookat"]
-            camUp     = camera_opt["camUp"]
-            camHeight = camera_opt["camHeight"]
-            scene.camera = fresnel.camera.Orthographic(camPos, camLookat, camUp, camHeight)
+            if camera_opt["camera_type"] == "perspective":
+                camPos    = camera_opt["camPos"]
+                camLookat = camera_opt["camLookat"]
+                camUp     = camera_opt["camUp"]
+                camHeight = camera_opt["camHeight"]
+                scene.camera = fresnel.camera.Perspective(camPos, camLookat, camUp, camHeight)
+                # TODO
+            elif camera_opt["camera_type"] == "orthographic":
+                camPos    = camera_opt["camPos"]
+                camLookat = camera_opt["camLookat"]
+                camUp     = camera_opt["camUp"]
+                camHeight = camera_opt["camHeight"]
+                scene.camera = fresnel.camera.Orthographic(camPos, camLookat, camUp, camHeight)
+
+    def setup_scene(self, camera_kwargs={}, lights="rembrandt"):
+        device = fresnel.Device()
+        scene = fresnel.Scene(device)
+        self.setup_camera(camera_kwargs=camera_kwargs)
         # setup lightings
         if "lights" in camera_kwargs:
             lights = camera_kwargs["lights"]

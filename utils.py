@@ -86,14 +86,14 @@ class KITTI360Bbox3D_fixed(KITTI360Bbox3D):
         self.labelname = child.find('label').text
         if self.labelname in classmap:
             self.labelname = classmap[self.labelname]
-        try:
-            semanticIdKITTI = int(child.find('semanticId').text)
-            self.semanticId = kittiId2label[semanticIdKITTI].id
-            self.instanceId = int(child.find('instanceId').text)
-            #self.name = kittiId2label[semanticIdKITTI].name
-        except:
-            self.semanticId = name2label[self.labelname].id
-            self.instanceId = -2
+        # try:
+        #     semanticIdKITTI = int(child.find('semanticId').text)
+        #     self.semanticId = kittiId2label[semanticIdKITTI].id
+        #     self.instanceId = int(child.find('instanceId').text)
+        #     #self.name = kittiId2label[semanticIdKITTI].name
+        # except:
+        self.semanticId = name2label[self.labelname].id
+        self.instanceId = -2
 
         self.start_frame = int(child.find('start_frame').text)
         self.end_frame = int(child.find('end_frame').text)

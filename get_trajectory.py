@@ -17,7 +17,14 @@ import open3d as o3d
 import open3d
 from labels import id2label, kittiId2label, name2label
 from labels import labels as kitti_labels
+# %%
+from kitti360_dataset import SequenceProcessor
 
+kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
+sequence = "2013_05_28_drive_0000_sync"
+sequence_processor = SequenceProcessor(kitti360_root, sequence)
+sequence_processor.test_plot()
+# %%
 
 kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
 sequence = "2013_05_28_drive_0000_sync"
@@ -75,7 +82,7 @@ def testscene(meshes, pcverts=None, vscale=10, lookat=np.array([0.,0.,0.]), camP
     #renderer.add_cloud(pcverts, radius=3)
     img = renderer.render(preview=True)
     return img
-meshes=[]
+meshes= []
 verts = []
 for vert, face in kmeshes[:]:
     vert = vert 
@@ -91,6 +98,8 @@ print(verts.max(axis=0), verts.min(axis=0), verts.mean(axis=0))
 #                        camPos=meshes[0][0].mean(axis=0)+np.array([15,15,15]), vscale=200)
 #plt.imshow(img)
 
+
+    
 vscale = 80
 cter = (verts.max(axis=0) + verts.min(axis=0))/2
 ater = (poses_matrices[:,:,3].max(axis=0) + poses_matrices[:,:,3].min(axis=0))/2
@@ -111,14 +120,36 @@ renderer.add_cloud(poses_matrices[:,:,3], radius=.6, color=[1,0,0])
 img = renderer.render(preview=True)
 plt.imshow( img )
 
+ulbs, ucounts = np.unique(labels, return_counts=True)
+ulbs, ucounts = zip(*sorted(zip(ulbs,ucounts), key=lambda x: -x[1]))
+ulbs = [id2label[ulb] for ulb in ulbs]
+colorlegends =     [mlines.Line2D([], [], color=np.array(lg.color)/256., marker='s', linestyle='None',
+                            markersize=10, label=lg.name) for lg in ulbs]
+colorlegends= [mlines.Line2D([], [], color=[1,0,0], marker='.', linestyle='None',
+                            markersize=10, label='camera')] + colorlegends
+plt.legend( handles=colorlegends, loc='upper left', prop={'size': 6},
+            bbox_to_anchor=(1.04, 1))
+# remove the ticks
+plt.gca().set_xticks([])
+plt.gca().set_yticks([])
+plt.show()
 #matrices[:,:,3]
 
 m = meshes[0][0].mean(axis=0)
 # %%
 import matplotlib.lines as mlines
-colorlegends =     [mlines.Line2D([], [], color=lg.color, marker='s', linestyle='None',
-                            markersize=10, label=lg.name) for lg in labels]
-plt.legend(handles=colorlegends, loc='upper right')
+ulbs, ucounts = np.unique(labels, return_counts=True)
+ulbs, ucounts = zip(*sorted(zip(ulbs,ucounts), key=lambda x: x[1]))
+ulbs = [id2label[ulb] for ulb in ulbs]
+colorlegends =     [mlines.Line2D([], [], color=np.array(lg.color)/256., marker='s', linestyle='None',
+                            markersize=10, label=lg.name) for lg in ulbs]
+colorlegends= [mlines.Line2D([], [], color=[1,0,0], marker='.', linestyle='None',
+                            markersize=10, label='camera')] + colorlegends
+plt.legend( handles=colorlegends, loc='upper left', prop={'size': 6},
+            bbox_to_anchor=(1.04, 1))
+# turn off the ticks
+plt.gca().set_xticks([])
+plt.gca().set_yticks([])
 plt.show()
 
 

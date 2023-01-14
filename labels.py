@@ -1,7 +1,9 @@
 #!/usr/bin/python
 #
 # KITTI-360 labels
-#
+# 
+
+# Modified by Xinggu
 
 from collections import namedtuple
 
@@ -112,6 +114,7 @@ labels = [
     Label(  'unknown vehicle'      , 43 ,        36,       255 , 'void'            , 0       , False        , True         , True         , ( 51,  0, 51) ),
     Label(  'unknown object'       , 44 ,        37,       255 , 'void'            , 0       , False        , True         , True         , ( 32, 32, 32) ),
     Label(  'license plate'        , -1 ,        -1,        -1 , 'vehicle'         , 7       , False        , True         , True         , (  0,  0,142) ),
+    # XGMODIFIED: some labels are not covered by the original code, so we add them here
     Label("bigPole", 45, -1, -1, 'object', 3, True, True, True, (153,153,153)),
     Label("driveway", 46, -1, -1, 'construction', 2, True, True, True, (64,128,128)),
     Label("guardrail", 47, -1, -1, 'construction', 2, True, True, True, (190,153,153)),
