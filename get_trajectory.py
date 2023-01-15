@@ -5,16 +5,15 @@
 %load_ext autoreload
 %autoreload 2
 import numpy as np
-import open3d as o3d
-from open3d.web_visualizer import draw
 import matplotlib.pyplot as plt
 #from xgutils.vis import *
 from kitti360scripts.helpers.annotation import Annotation3D
 from utils import Annotation3D_fixed
 import sys
 import glob
-import open3d as o3d
-import open3d
+#import open3d
+#import open3d as o3d
+#from open3d.web_visualizer import draw
 from labels import id2label, kittiId2label, name2label
 from labels import labels as kitti_labels
 # %%
@@ -23,7 +22,14 @@ from kitti360_dataset import SequenceProcessor
 kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
 sequence = "2013_05_28_drive_0000_sync"
 sequence_processor = SequenceProcessor(kitti360_root, sequence)
-sequence_processor.test_plot()
+sequence_processor.test_plot(vscale=300)
+# %%
+sequence_processor.setup_visualizer(solid=0.)
+sequence_processor.overview_plot(vscale=200)
+# for i in range(10):
+#     sequence_processor.setup_visualizer(solid=0.)
+#     sequence_processor.test_plot(vscale=100, ith=i*10+20)
+
 # %%
 
 kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"

@@ -9,7 +9,7 @@ import igl
 
 dflt_camera = dict(camPos=np.array([2,2,2]), camLookat=np.array([0.,0.,0.]),\
     camUp=np.array([0,1,0]),camHeight=2, fit_camera=False, 
-    camera_type = "orthogonal", \
+    camera_type = "orthographic", \
     light_samples=32, samples=32, resolution=(256,256))
 gold_color = np.array([253, 204, 134])/256
 gray_color = np.array([0.9, 0.9, 0.9])
@@ -42,6 +42,34 @@ def addAxes(scene, radius=[0.01,0.01,0.01]):
     axs.color[:] =  [[[1,0,0],[1,0,0]],
                         [[0,1,0],[0,1,0]],
                         [[0,0,1],[0,0,1]]]
+def addArrows(scene, starts, ends, radius=0.01, solid=0., values=None):
+    N = starts.shape[0]
+    if values is None:
+        values = np.linspace(0,1,N)
+
+    axs = fresnel.geometry.Cylinder(scene, N=N)
+    axs.material = fresnel.material.Material(solid=solid)
+    axs.material.primitive_color_mix = 1.0
+    points = np.array([starts,ends]).transpose(1,0,2)
+    axs.points[:] = points
+    axs.radius[:] = radius
+    # get cmap from matplotlib and values:
+    cmap = plt.get_cmap('viridis')
+    colors = cmap(values)
+    axs.color[:] = colors[:,None,:3][:,[0,0],:]
+
+    
+    axs = fresnel.geometry.Sphere(scene, N=N)
+    axs.material = fresnel.material.Material(solid=solid)
+    axs.material.primitive_color_mix = 1.0
+    points = np.array([starts,ends]).transpose(1,0,2)
+    axs.position[:] = points[:,1,:]
+    axs.radius[:] = radius*2
+    # get cmap from matplotlib and values:
+    cmap = plt.get_cmap('viridis')
+    colors = cmap(values)
+    axs.color[:] = colors[:,:3]
+
 def addBBox(scene, bb_min=np.array([-1,-1,-1.]), bb_max=np.array([1,1,1.]), color=red_color, radius=0.005, solid=1.):
     axs = fresnel.geometry.Cylinder(scene, N=12)
     axs.material = fresnel.material.Material(   color = fresnel.color.linear(color),
@@ -66,6 +94,7 @@ def addBBox(scene, bb_min=np.array([-1,-1,-1.]), bb_max=np.array([1,1,1.]), colo
                     ]
     axs.radius[:] = radius
     axs.color[:] =  [ [[.5,0,0],[.5,0,0]] ] * 12
+
 def addBox(scene, center, spec=(1,1,1), color=gray_color, solid=0., 
             outline_width=0., metal=0., specular=0.0, roughness=1.0, **kwargs):
     X, Y, Z = spec[0], spec[1], spec[2]
@@ -99,6 +128,7 @@ def addBox(scene, center, spec=(1,1,1), color=gray_color, solid=0.,
     #geometry.color[:] = color
     geometry.outline_material.primitive_color_mix = .7
     geometry.outline_material.solid  = 0.0
+
 def addPlane(scene, center, up=(0,1,0), spec=(1,1), color=white_color, solid=0., **kwargs):
     X, Z = spec[0], spec[1]
     poly_info = np.array([
@@ -117,6 +147,66 @@ def addPlane(scene, center, up=(0,1,0), spec=(1,1), color=white_color, solid=0.,
                                 solid=solid)
     geometry.material.primitive_color_mix = 0.0 #Set 0 to use the color specified in the Material, 
 
+def add_error_cloud(scene, cloud, radius=0.006, color=None, solid=0., name=None):
+    cloud = fresnel.geometry.Sphere(scene, position = cloud, radius=radius)
+    cloud_flat_color = gold_color
+    if color is not None and len(color)==3:
+        cloud_flat_color = color
+    cloud.material = fresnel.material.Material(solid=solid, \
+                                                color=fresnel.color.linear(cloud_flat_color),\
+                                                roughness=1.0,
+                                                specular=0.0)
+    if color is not None and len(color)!=3:
+        cloud.material.primitive_color_mix = 1.0
+        cloud.color[:] = fresnel.color.linear(plt.cm.plasma(color)[:,:3])
+
+def add_cloud(scene, cloud, radius=0.006, color=None, solid=0., primitive_color_mix=1., cloud_flat_color = gold_color, 
+        roughness=.2, specular=.8, spec_trans=0., metal=0., name=None):
+    cloud = fresnel.geometry.Sphere(scene, position = cloud, radius=radius)
+    
+    if color is not None and len(color)==3:
+        cloud_flat_color = color
+    cloud.material = fresnel.material.Material(solid=solid, \
+                                                color=fresnel.color.linear(cloud_flat_color),\
+                                                roughness=roughness,
+                                                specular=specular,
+                                                metal=metal,
+                                                spec_trans=spec_trans)
+    if color is not None and len(color)!=3:
+        cloud.material.primitive_color_mix = primitive_color_mix
+        cloud.color[:] = fresnel.color.linear(color)
+
+def add_mesh(scene, vert, face, outline_width=None, name=None,
+        color = gray_color, vert_color=None, vert_color_scheme=None, solid=0., roughness=.2, specular=.8, spec_trans=0., metal=0.) :
+    """ vert_color: (Vn, 4) """
+    mesh = fresnel.geometry.Mesh(scene,vertices=vert[face].reshape(-1,3) ,N=1)
+    mesh.material = fresnel.material.Material(color=fresnel.color.linear(color),
+                                                solid=solid,
+                                                roughness=roughness,
+                                                specular=specular,
+                                                spec_trans=spec_trans,
+                                                metal=metal)
+    if vert_color is not None:
+        mesh.color[:] = fresnel.color.linear(vert_color)
+        mesh.material.primitive_color_mix = 1.0
+    elif vert_color_scheme is not None:
+        if vert_color_scheme == "normal":
+            normals = igl.per_vertex_normals(vert, face)
+            vert_color = (normals[face].reshape(-1,3)+1)/2.
+        mesh.color[:] = fresnel.color.linear(vert_color)
+        mesh.material.primitive_color_mix = 1.0
+    if outline_width is not None:
+        mesh.outline_width = outline_width
+    return self
+
+def add_trajectory(scene, translations, rotations=None):
+    add_cloud(scene, translations, radius=0.01, color=red_color, solid=1., primitive_color_mix=0.)
+    traj = fresnel.geometry.Cylinder(scene, N=len(translations))
+    traj.material = fresnel.material.Material(solid=1.)
+    traj.material.primitive_color_mix = 1.0
+    traj.points[:] = [[translations[i], translations[i+1]] for i in range(len(translations)-1)]
+    traj.radius[:] = 0.01
+    traj.color[:] =  [[[1,0,0],[1,0,0]]] * (len(translations)-1)
 
 def get_cam2world(camera, lookat=np.array([0,0,0]), up=np.array([0,1,0])):
     shift = -camera
@@ -263,6 +353,7 @@ class FresnelRenderer():
     def __init__(self, camera_kwargs={}, lights="rembrandt", **kwargs):
         self.setup_scene(camera_kwargs=camera_kwargs, lights=lights)
     def setup_camera(self, camera_kwargs={}):
+        scene = self.scene
         self.camera_opt = camera_opt = copy.deepcopy(dflt_camera)
         camera_opt.update(camera_kwargs)
         self.camera_kwargs = camera_opt
@@ -287,7 +378,7 @@ class FresnelRenderer():
 
     def setup_scene(self, camera_kwargs={}, lights="rembrandt"):
         device = fresnel.Device()
-        scene = fresnel.Scene(device)
+        self.scene = scene = fresnel.Scene(device)
         self.setup_camera(camera_kwargs=camera_kwargs)
         # setup lightings
         if "lights" in camera_kwargs:
