@@ -42,6 +42,7 @@ def addAxes(scene, radius=[0.01,0.01,0.01]):
     axs.color[:] =  [[[1,0,0],[1,0,0]],
                         [[0,1,0],[0,1,0]],
                         [[0,0,1],[0,0,1]]]
+    return axs
 def addArrows(scene, starts, ends, radius=0.01, solid=0., values=None):
     N = starts.shape[0]
     if values is None:
@@ -69,7 +70,7 @@ def addArrows(scene, starts, ends, radius=0.01, solid=0., values=None):
     cmap = plt.get_cmap('viridis')
     colors = cmap(values)
     axs.color[:] = colors[:,:3]
-
+    return axs
 def addBBox(scene, bb_min=np.array([-1,-1,-1.]), bb_max=np.array([1,1,1.]), color=red_color, radius=0.005, solid=1.):
     axs = fresnel.geometry.Cylinder(scene, N=12)
     axs.material = fresnel.material.Material(   color = fresnel.color.linear(color),
@@ -94,7 +95,7 @@ def addBBox(scene, bb_min=np.array([-1,-1,-1.]), bb_max=np.array([1,1,1.]), colo
                     ]
     axs.radius[:] = radius
     axs.color[:] =  [ [[.5,0,0],[.5,0,0]] ] * 12
-
+    return axs
 def addBox(scene, center, spec=(1,1,1), color=gray_color, solid=0., 
             outline_width=0., metal=0., specular=0.0, roughness=1.0, **kwargs):
     X, Y, Z = spec[0], spec[1], spec[2]
@@ -128,7 +129,7 @@ def addBox(scene, center, spec=(1,1,1), color=gray_color, solid=0.,
     #geometry.color[:] = color
     geometry.outline_material.primitive_color_mix = .7
     geometry.outline_material.solid  = 0.0
-
+    return geometry
 def addPlane(scene, center, up=(0,1,0), spec=(1,1), color=white_color, solid=0., **kwargs):
     X, Z = spec[0], spec[1]
     poly_info = np.array([
@@ -146,7 +147,7 @@ def addPlane(scene, center, up=(0,1,0), spec=(1,1), color=white_color, solid=0.,
                                 color=color,
                                 solid=solid)
     geometry.material.primitive_color_mix = 0.0 #Set 0 to use the color specified in the Material, 
-
+    return geometry
 def add_error_cloud(scene, cloud, radius=0.006, color=None, solid=0., name=None):
     cloud = fresnel.geometry.Sphere(scene, position = cloud, radius=radius)
     cloud_flat_color = gold_color
@@ -159,7 +160,7 @@ def add_error_cloud(scene, cloud, radius=0.006, color=None, solid=0., name=None)
     if color is not None and len(color)!=3:
         cloud.material.primitive_color_mix = 1.0
         cloud.color[:] = fresnel.color.linear(plt.cm.plasma(color)[:,:3])
-
+    return cloud
 def add_cloud(scene, cloud, radius=0.006, color=None, solid=0., primitive_color_mix=1., cloud_flat_color = gold_color, 
         roughness=.2, specular=.8, spec_trans=0., metal=0., name=None):
     cloud = fresnel.geometry.Sphere(scene, position = cloud, radius=radius)
@@ -175,6 +176,7 @@ def add_cloud(scene, cloud, radius=0.006, color=None, solid=0., primitive_color_
     if color is not None and len(color)!=3:
         cloud.material.primitive_color_mix = primitive_color_mix
         cloud.color[:] = fresnel.color.linear(color)
+        return cloud
 
 def add_mesh(scene, vert, face, outline_width=None, name=None,
         color = gray_color, vert_color=None, vert_color_scheme=None, solid=0., roughness=.2, specular=.8, spec_trans=0., metal=0.) :
@@ -197,7 +199,7 @@ def add_mesh(scene, vert, face, outline_width=None, name=None,
         mesh.material.primitive_color_mix = 1.0
     if outline_width is not None:
         mesh.outline_width = outline_width
-    return self
+    return mesh
 
 def add_trajectory(scene, translations, rotations=None):
     add_cloud(scene, translations, radius=0.01, color=red_color, solid=1., primitive_color_mix=0.)
@@ -207,7 +209,7 @@ def add_trajectory(scene, translations, rotations=None):
     traj.points[:] = [[translations[i], translations[i+1]] for i in range(len(translations)-1)]
     traj.radius[:] = 0.01
     traj.color[:] =  [[[1,0,0],[1,0,0]]] * (len(translations)-1)
-
+    return traj
 def get_cam2world(camera, lookat=np.array([0,0,0]), up=np.array([0,1,0])):
     shift = -camera
     z_axis = -lookat + camera  # +z
@@ -413,6 +415,7 @@ class FresnelRenderer():
         if color is not None and len(color)!=3:
             cloud.material.primitive_color_mix = 1.0
             cloud.color[:] = fresnel.color.linear(plt.cm.plasma(color)[:,:3])
+        return cloud
     def add_cloud(self, cloud, radius=0.006, color=None, solid=0., primitive_color_mix=1., cloud_flat_color = gold_color, 
             roughness=.2, specular=.8, spec_trans=0., metal=0., name=None):
         scene = self.scene
@@ -429,6 +432,7 @@ class FresnelRenderer():
         if color is not None and len(color)!=3:
             cloud.material.primitive_color_mix = primitive_color_mix
             cloud.color[:] = fresnel.color.linear(color)
+        return cloud
     def add_mesh(self, vert, face, outline_width=None, name=None,
             color = gray_color, vert_color=None, vert_color_scheme=None, solid=0., roughness=.2, specular=.8, spec_trans=0., metal=0.) :
         """ vert_color: (Vn, 4) """
@@ -451,7 +455,7 @@ class FresnelRenderer():
             mesh.material.primitive_color_mix = 1.0
         if outline_width is not None:
             mesh.outline_width = outline_width
-        return self
+        return mesh
 
     def add_light(self, direction=(0,1,0), color=(1,1,1), theta=3.14):
         self.scene.lights.append( 

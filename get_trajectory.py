@@ -22,14 +22,18 @@ from kitti360_dataset import SequenceProcessor
 kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
 sequence = "2013_05_28_drive_0000_sync"
 sequence_processor = SequenceProcessor(kitti360_root, sequence)
-sequence_processor.test_plot(vscale=300)
+sequence_processor.overview_plot(vscale=300)
 # %%
+# sequence_processor.setup_visualizer(solid=0.)
+# sequence_processor.overview_plot(vscale=500)
 sequence_processor.setup_visualizer(solid=0.)
-sequence_processor.overview_plot(vscale=200)
-# for i in range(10):
-#     sequence_processor.setup_visualizer(solid=0.)
-#     sequence_processor.test_plot(vscale=100, ith=i*10+20)
-
+for i in range(1):
+    traj_i = i+4093
+    sequence_processor.setup_traj(traj_i=traj_i)
+    img = sequence_processor.zoomout_plot(vscale=150, traj_i=traj_i)
+    sequence_processor.unset_traj()
+    
+    
 # %%
 
 kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
