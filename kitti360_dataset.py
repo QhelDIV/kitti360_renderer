@@ -10,6 +10,7 @@ import fresnelvis as fvis
 from utils import Annotation3D_fixed
 from labels import id2label, kittiId2label, name2label
 from labels import labels as kitti_labels
+from kitti360scripts.devkits.commons.loadCalibration import loadPerspectiveIntrinsic
 
 class SequenceProcessor():
     def __init__(self, kitti360_root, sequence):
@@ -23,6 +24,7 @@ class SequenceProcessor():
         self.poses_matrices = self.poses_data[:,1:].reshape(-1, 4, 4)
         self.labelDir = '%s/3d_bboxes_full/' % kitti360_root
         self.perspImg0Dir = '%s/data_2d_raw/%s/image_00/' % (kitti360_root, sequence)
+        self.cam_calib = loadPerspectiveIntrinsic("%s/calibration/perspective.txt" % (kitti360_root))
         self.annon = Annotation3D_fixed(labelDir=self.labelDir, sequence=sequence)
         self.kmeshes = []
         self.centers = []
@@ -58,6 +60,7 @@ class SequenceProcessor():
             self.fvis_obj_meshes.append(mesh)
         #renderer.add_cloud(aobjtrans[:,:,3], radius=0.3, color=[0,1,0], solid=solid)
         self.fvis_traj = renderer.add_cloud(poses_matrices[:,:3,3], radius=.3, color=[1,0,0], solid=solid)
+        self.hide_traj()
         #self.fvis_traj = fvis.addBBox(renderer.scene, poses_matrices[:,:3,3], radius=.3, color=[1,0,0], solid=solid)
         # renderer.add_cloud(poses_matrices[:,:3,3], radius=.3, color=[1,0,0], solid=solid)
 
@@ -77,9 +80,34 @@ class SequenceProcessor():
         self.fvis_obj_visibilities[checker] = False
         for obj_i in np.where(checker==True)[0]:
             self.fvis_obj_meshes[obj_i].disable()
+        
+        self.traj_mesh = self.renderer.add_cloud(self.poses_matrices[traj_i:traj_i+1,:3,3], color= np.array([[1.,1.,0.]]), 
+        radius=.6, solid=1. )
+        self.traj_mesh.disable()
+
+        frustum_verts = np.array([])
+        self.traj_frustum = fresnel.geometry.Polygon(self.renderer.scene,
+                                    N=3,
+                                    vertices = frustum_verts)
+        geometry.material.color = fresnel.color.linear([1.,1.,0.])
+        geometry.material.solid=1
+
+        
     def unset_traj(self):
         for obj_i in np.where(self.fvis_obj_visibilities==False)[0]:
             self.fvis_obj_meshes[obj_i].enable()
+    def hide_vegetation(self):
+        self.fvis_obj_visibilities[self.is_vegetation] = False
+        for obj_i in np.where(self.is_vegetation)[0]:
+            self.fvis_obj_meshes[obj_i].disable()
+    def show_vegetation(self):
+        self.fvis_obj_visibilities[self.is_vegetation] = True
+        for obj_i in np.where(self.is_vegetation)[0]:
+            self.fvis_obj_meshes[obj_i].enable()
+    def hide_traj(self):
+        self.fvis_traj.disable()
+    def show_traj(self):
+        self.fvis_traj.enable()
     def get_persp_img(self, traj_i):
         framei = self.frames[traj_i]
         img = plt.imread(self.perspImg0Dir + 'data_rect/%010d.png' % framei)
@@ -114,7 +142,10 @@ class SequenceProcessor():
         # plt.gca().set_title('sequence %s - all timeframes overview plot' % self.sequence)
         plt.show()
         return img
-    def topview_plot(self, vscale=100, traj_i=2):
+    def topview_plot(self, vscale=100, traj_i=2, hide_traj=True, hide_vegetation=False):
+        
+        if hide_vegetation:
+            self.hide_vegetation()
         fig, ax = plt.subplots(1,1, figsize=(10,10))
 
         kmeshes, poses_matrices, aobjtrans, labels = self.kmeshes, self.poses_matrices, self.aobjtrans, self.labels
@@ -142,8 +173,12 @@ class SequenceProcessor():
         plt.axis('off')
         # plt.gca().set_title('sequence %s - all timeframes overview plot' % self.sequence)
         plt.show()
+        if hide_vegetation:
+            self.show_vegetation()
+
         return img
     def zoomout_plot(self, vscale=200, traj_i=2):
+        self.show_traj()
         fig, ax = plt.subplots(1,1, figsize=(10,10))
 
         kmeshes, poses_matrices, aobjtrans, labels = self.kmeshes, self.poses_matrices, self.aobjtrans, self.labels
@@ -160,6 +195,7 @@ class SequenceProcessor():
                                 resolution=np.array((256,256))*2
                                 )
         self.renderer.setup_camera(camera_kwargs)
+        self.traj_mesh.enable()
         img = self.renderer.render(preview=True)
         plt.imshow( img )
 
@@ -171,6 +207,7 @@ class SequenceProcessor():
         plt.axis('off')
         plt.gca().set_title('sequence %s - all timeframes overview plot' % self.sequence)
         plt.show()
+        self.hide_traj()
         return img
 
     def global_plot(self):

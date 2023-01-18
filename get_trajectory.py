@@ -29,26 +29,27 @@ sequence_processor = SequenceProcessor(kitti360_root, sequence)
 #img = sequence_processor.global_plot()
 # %%
 # sequence_processor.setup_visualizer(solid=0.)
-sequence_processor.setup_visualizer(solid=0.)
+sequence_processor.setup_visualizer(solid=1.)
 from PIL import Image
 imgs = []
-for i in range(16):
+for i in range(1):
     traj_i = i*3+2030
     sequence_processor.setup_traj(traj_i=traj_i)
-    sequence_processor.get_persp_img(traj_i=traj_i)
+    # sequence_processor.get_persp_img(traj_i=traj_i)
     plt.show()
-    #sequence_processor.overview_plot(vscale=500)
     #img = sequence_processor.perpect_plot(vscale=50, traj_i=traj_i)
-    #img = sequence_processor.topview_plot(vscale=150, traj_i=traj_i)
+
+    # img = sequence_processor.topview_plot(vscale=50, traj_i=traj_i)
+    # img = sequence_processor.topview_plot(vscale=50, traj_i=traj_i, hide_vegetation=True)
+    
+    sequence_processor.zoomout_plot(vscale=150, traj_i=traj_i)
     sequence_processor.unset_traj()
     imgs.append(img)
     # save image using PIL:
     #img = Image.fromarray(img)
     #img.save('temp/traj_%d.png' % traj_i)
 
-    
 
-    
 # %%
 
 kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
