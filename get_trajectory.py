@@ -1,9 +1,10 @@
 
-# %%[markdown]
-# aobj.R and aobj.T are in 
+# %%
 %matplotlib inline
 %load_ext autoreload
 %autoreload 2
+# %%[markdown]
+# aobj.R and aobj.T are in 
 import numpy as np
 import matplotlib.pyplot as plt
 #from xgutils.vis import *
@@ -17,22 +18,36 @@ import glob
 from labels import id2label, kittiId2label, name2label
 from labels import labels as kitti_labels
 # %%
+import kitti360_dataset
 from kitti360_dataset import SequenceProcessor
 
 kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
 sequence = "2013_05_28_drive_0000_sync"
 sequence_processor = SequenceProcessor(kitti360_root, sequence)
-sequence_processor.overview_plot(vscale=300)
+#sequence_processor.overview_plot(vscale=300)
+
+#img = sequence_processor.global_plot()
 # %%
 # sequence_processor.setup_visualizer(solid=0.)
-# sequence_processor.overview_plot(vscale=500)
 sequence_processor.setup_visualizer(solid=0.)
-for i in range(1):
-    traj_i = i+4093
+from PIL import Image
+imgs = []
+for i in range(16):
+    traj_i = i*3+2030
     sequence_processor.setup_traj(traj_i=traj_i)
-    img = sequence_processor.zoomout_plot(vscale=150, traj_i=traj_i)
+    sequence_processor.get_persp_img(traj_i=traj_i)
+    plt.show()
+    #sequence_processor.overview_plot(vscale=500)
+    #img = sequence_processor.perpect_plot(vscale=50, traj_i=traj_i)
+    #img = sequence_processor.topview_plot(vscale=150, traj_i=traj_i)
     sequence_processor.unset_traj()
+    imgs.append(img)
+    # save image using PIL:
+    #img = Image.fromarray(img)
+    #img.save('temp/traj_%d.png' % traj_i)
+
     
+
     
 # %%
 

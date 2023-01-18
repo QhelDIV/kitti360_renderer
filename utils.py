@@ -21,7 +21,7 @@ Point = namedtuple('Point', ['x', 'y'])
 from abc import ABCMeta, abstractmethod
 #from kitti360scripts.helpers.labels     import labels, id2label, kittiId2label, name2label
 from labels    import labels, id2label, kittiId2label, name2label
-MAX_N = 1000
+MAX_N = 10000
 def local2global(semanticId, instanceId):
     globalId = semanticId*MAX_N + instanceId
     if isinstance(globalId, np.ndarray):
