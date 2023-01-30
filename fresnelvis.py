@@ -369,7 +369,10 @@ class FresnelRenderer():
                 camLookat = camera_opt["camLookat"]
                 camUp     = camera_opt["camUp"]
                 camHeight = camera_opt["camHeight"]
-                scene.camera = fresnel.camera.Perspective(camPos, camLookat, camUp, camHeight)
+                focal_length = camera_opt.get("focal_length", .5)
+                scene.camera = fresnel.camera.Perspective(camPos, camLookat, camUp, 
+                                focal_length=focal_length,
+                                height=camHeight)
                 # TODO
             elif camera_opt["camera_type"] == "orthographic":
                 camPos    = camera_opt["camPos"]

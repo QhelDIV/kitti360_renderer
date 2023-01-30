@@ -29,27 +29,37 @@ sequence_processor = SequenceProcessor(kitti360_root, sequence)
 #img = sequence_processor.global_plot()
 # %%
 # sequence_processor.setup_visualizer(solid=0.)
-sequence_processor.setup_visualizer(solid=1.)
+sequence_processor.setup_visualizer(solid=0.)
 from PIL import Image
 imgs = []
-for i in range(1):
-    traj_i = i*3+2030
+for i in range(0, 1):
+    traj_i = i*10 +5050 #+ 20*2 + 24*30 + 6485
     sequence_processor.setup_traj(traj_i=traj_i)
-    # sequence_processor.get_persp_img(traj_i=traj_i)
+    #sequence_processor.show_traj()
+    sequence_processor.get_persp_img(traj_i=traj_i,crop_size=256)
+    #sequence_processor.get_persp_img(traj_i=traj_i)
+    #sequence_processor.get_persp_img(traj_i=traj_i, if_rectified=False)
     plt.show()
-    #img = sequence_processor.perpect_plot(vscale=50, traj_i=traj_i)
-
-    # img = sequence_processor.topview_plot(vscale=50, traj_i=traj_i)
-    # img = sequence_processor.topview_plot(vscale=50, traj_i=traj_i, hide_vegetation=True)
+    img = sequence_processor.perspect_plot(vscale=1, traj_i=traj_i, if_rectified=True)
+    sequence_processor.traj_mesh.enable()
+    sequence_processor.traj_frustum.enable()
+    img = sequence_processor.topview_plot(vscale=50, traj_i=traj_i, hide_frustum=False, mode="bottom")
+    #img = sequence_processor.topview_plot(vscale=50, traj_i=traj_i, hide_vegetation=True, hide_frustum=False)
     
-    sequence_processor.zoomout_plot(vscale=150, traj_i=traj_i)
+    #sequence_processor.zoomout_plot(vscale=150, traj_i=traj_i)
     sequence_processor.unset_traj()
-    imgs.append(img)
+    #imgs.append(img)
     # save image using PIL:
     #img = Image.fromarray(img)
     #img.save('temp/traj_%d.png' % traj_i)
 
+# %%
+import numpy as np
+np.set_printoptions( 3 )
+loaded = np.load("data/bedrooms_boxes.npz")
+#print(loaded["camera_coords"].shape, loaded["target_coords"].shape, loaded["room_layout"].shape)
 
+#print(loaded["target_coords"] - loaded["camera_coords"])
 # %%
 
 kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
@@ -95,7 +105,7 @@ labels = np.array(labels)
 
 #%%
 
-import fresnelvis as fvis
+import xgutils.vis.fresnelvis as fvis
 #from fvis import *
 def testscene(meshes, pcverts=None, vscale=10, lookat=np.array([0.,0.,0.]), camPos=np.array([0,2,0])):
     camera_kwargs = dict(camPos=np.array([2,2,2])*vscale, camLookat=np.array([0.,0.,0.]),\
