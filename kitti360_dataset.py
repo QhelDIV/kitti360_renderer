@@ -8,7 +8,7 @@ import matplotlib.lines as mlines
 #from kitti360scripts.helpers.annotation import Annotation3D
 import fresnel
 import xgutils.vis.fresnelvis as fvis
-from xgutils import sysutil, nputil
+from xgutils import sysutil, nputil, geoutil
 from utils import Annotation3D_fixed
 from labels import id2label, kittiId2label, name2label
 from labels import labels as kitti_labels
@@ -111,7 +111,6 @@ class SequenceProcessor():
         traj_pos = self.poses_matrices[traj_i, :3, 3]
         self.traj_mesh = self.renderer.add_cloud(traj_pos[None, :], color=np.array([[1., 1., 0.]]),
                                                  radius=.6, solid=1.)
-        self.traj_mesh.disable()
 
         self.frustum_verts = np.array([traj_pos,
                                        traj_pos+np.array([0, 10, 0]),
@@ -130,8 +129,26 @@ class SequenceProcessor():
                                                   vertices=self.frustum_verts)
         self.traj_frustum.material.color = fresnel.color.linear([1., 1., 0.])
         self.traj_frustum.material.solid = 1
-        self.traj_frustum.disable()
 
+        next_cams, next_dirs = self.get_next_cameras(traj_i)
+        self.next_cams = self.renderer.add_cloud(
+            next_cams, radius=.3, color=[0, 1, 1], solid=1.)
+        self.next_cam_dirs, self.ncdheads = fvis.addArrows(self.renderer.scene,
+                starts = next_cams, ends = next_cams+next_dirs*10, 
+                radius=.1, solid=1.)
+        self.disable_debug()
+    def enable_debug(self):
+        self.traj_mesh.enable()
+        self.traj_frustum.enable()
+        self.next_cams.enable()
+        self.next_cam_dirs.enable()
+        self.ncdheads.enable()
+    def disable_debug(self):
+        self.traj_mesh.disable()
+        self.traj_frustum.disable()
+        self.next_cams.disable()
+        self.next_cam_dirs.disable()
+        self.ncdheads.disable()
     def unset_traj(self):
         for obj_i in np.where(self.fvis_obj_visibilities == False)[0]:
             self.fvis_obj_meshes[obj_i].enable()
@@ -410,6 +427,17 @@ class SequenceProcessor():
         # ax.axis('off')
         plt.gca().set_title('sequence %s - all timeframes overview plot' % self.sequence)
         plt.show()
+
+    def get_next_cameras(self, traj_i, max_dist=25., cam_num=40):
+        # TODO: Add slerp support for direction interpolation
+        points = self.poses_matrices[traj_i:traj_i+100, :3, 3]
+        dirs = self.poses_matrices[traj_i:traj_i+100, :3, 2]
+        s_cams, s_dirs = geoutil.sample_line_sequence(
+            points, dirs, spacing=max_dist / cam_num)
+        s_cams = s_cams[:cam_num]
+        s_dirs = s_dirs[:cam_num]
+        s_dirs = s_dirs / np.linalg.norm(s_dirs, axis=1, keepdims=True)
+        return s_cams, s_dirs
 
     def test_output(self, framei, outdir="output/"):
         frame_name = self.sequence + "_%08d" % framei

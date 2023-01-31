@@ -3,8 +3,9 @@
 # KITTI-360 labels
 # 
 
-# Modified by Xinggu
+# Modified by Xingguang Yan
 
+import numpy as np
 from collections import namedtuple
 
 
@@ -152,7 +153,11 @@ for label in labels:
         category2labels[category].append(label)
     else:
         category2labels[category] = [label]
-
+# colors
+rdunique_color = 256*256*256
+colors = np.array([label.color for label in labels])
+ramped = colors[:,0] + 256*colors[:,1] + 256*256*colors[:,2]
+rpcolor2label = { color: label for color, label in zip(ramped, labels) }
 #--------------------------------------------------------------------------------
 # Assure single instance name
 #--------------------------------------------------------------------------------
