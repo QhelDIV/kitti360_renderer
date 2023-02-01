@@ -172,6 +172,15 @@ def rgbimg2semantics(img):
     for key,val in zip(k,v):
         #print(k,v)
         out[rvimg==key] = val
+    return out.astype(np.uint8)
+def semantics2rgbimg(img, vis_color=False):
+    imgshape = img.shape[:2]
+    out = np.zeros((imgshape[0],imgshape[1],3), dtype=np.uint8)
+    for semi in range(len(labels)):
+        if vis_color:
+            out[img==semi] = id2label[semi].color
+        else:
+            out[img==semi] = id2semcolor[semi]
     return out
 #--------------------------------------------------------------------------------
 # Assure single instance name
