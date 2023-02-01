@@ -41,6 +41,7 @@ for i in range(0, 1):
     traj_i = 100+i*50  # i*10 +5050 #+ 20*2 + 24*30 + 6485
     sequence_processor.setup_traj(traj_i=traj_i)
     # sequence_processor.show_traj()
+    sequence_processor.enable_debug()
     sequence_processor.get_persp_img(traj_i=traj_i, crop_size=None)
     sequence_processor.get_persp_img(traj_i=traj_i, crop_size=256)
     #sequence_processor.perspect_plot_matplotlib(traj_i=traj_i)
@@ -60,7 +61,7 @@ for i in range(0, 1):
     #img = Image.fromarray(img)
     #img.save('temp/traj_%d.png' % traj_i)
 
-# %%
+# %%q
 np.set_printoptions(3)
 loaded = np.load("data/bedrooms_boxes.npz")
 #print(loaded["camera_coords"].shape, loaded["target_coords"].shape, loaded["room_layout"].shape)

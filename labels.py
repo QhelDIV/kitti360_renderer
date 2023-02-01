@@ -114,8 +114,9 @@ labels = [
     Label(  'unknown construction' , 42 ,        35,       255 , 'void'            , 0       , False        , True         , True         , (102,  0,  0) ),
     Label(  'unknown vehicle'      , 43 ,        36,       255 , 'void'            , 0       , False        , True         , True         , ( 51,  0, 51) ),
     Label(  'unknown object'       , 44 ,        37,       255 , 'void'            , 0       , False        , True         , True         , ( 32, 32, 32) ),
-    Label(  'license plate'        , -1 ,        -1,        -1 , 'vehicle'         , 7       , False        , True         , True         , (  0,  0,142) ),
+    #Label(  'license plate'        , -1 ,        -1,        -1 , 'vehicle'         , 7       , False        , True         , True         , (  0,  0,142) ),
     # XGMODIFIED: some labels are not covered by the original code, so we add them here
+    Label(  'license plate'        , 59 ,        -1,        -1 , 'vehicle'         , 7       , False        , True         , True         , (  0,  0,142) ),
     Label("bigPole", 45, -1, -1, 'object', 3, True, True, True, (153,153,153)),
     Label("driveway", 46, -1, -1, 'construction', 2, True, True, True, (64,128,128)),
     Label("guardrail", 47, -1, -1, 'construction', 2, True, True, True, (190,153,153)),
@@ -154,10 +155,24 @@ for label in labels:
     else:
         category2labels[category] = [label]
 # colors
-rdunique_color = 256*256*256
-colors = np.array([label.color for label in labels])
-ramped = colors[:,0] + 256*colors[:,1] + 256*256*colors[:,2]
-rpcolor2label = { color: label for color, label in zip(ramped, labels) }
+np.random.seed(314)
+semcolor_raveled = np.random.choice(256*256*256, len(labels), replace=False)
+semcolor = np.array( np.unravel_index(semcolor_raveled, (256,256,256)) ).T
+
+raveled_semcolor2id = { color: label.id for color, label in zip(semcolor_raveled, labels) }
+id2semcolor = { label.id: color for color, label in zip(semcolor, labels) }
+name2rdcolor   = { label.name: semcolor for color, label in zip(semcolor_raveled, labels) }
+def rgbimg2semantics(img):
+    imgshape = img.shape[:2]
+    img = img[:,:,:3].astype(np.int32).reshape(-1,3)
+    rvimg = np.ravel_multi_index(img.T, (256,256,256)).reshape(imgshape)
+    k = np.array(list(raveled_semcolor2id.keys()))
+    v = np.array(list(raveled_semcolor2id.values()))
+    out = np.zeros_like(rvimg)
+    for key,val in zip(k,v):
+        #print(k,v)
+        out[rvimg==key] = val
+    return out
 #--------------------------------------------------------------------------------
 # Assure single instance name
 #--------------------------------------------------------------------------------

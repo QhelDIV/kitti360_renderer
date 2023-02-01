@@ -10,7 +10,7 @@ import fresnel
 import xgutils.vis.fresnelvis as fvis
 from xgutils import sysutil, nputil, geoutil
 from utils import Annotation3D_fixed
-from labels import id2label, kittiId2label, name2label
+from labels import id2label, kittiId2label, name2label, id2semcolor
 from labels import labels as kitti_labels
 from kitti360scripts.devkits.commons.loadCalibration import loadPerspectiveIntrinsic
 from kitti360scripts.helpers.project import CameraPerspective
@@ -79,7 +79,7 @@ class SequenceProcessor():
         self.fvis_obj_meshes = []
         self.fvis_obj_visibilities = np.ones(len(kmeshes), dtype=np.bool)
         for i, (vert, face) in enumerate(kmeshes[:]):
-            color = np.array(id2label[labels[i]].color)/255
+            color = np.array(id2semcolor[labels[i]])/255
             mesh = renderer.add_mesh(vert, face, color=color, solid=solid)
             self.fvis_obj_meshes.append(mesh)
         #renderer.add_cloud(aobjtrans[:,:,3], radius=0.3, color=[0,1,0], solid=solid)
@@ -430,8 +430,8 @@ class SequenceProcessor():
 
     def get_next_cameras(self, traj_i, max_dist=25., cam_num=40):
         # TODO: Add slerp support for direction interpolation
-        points = self.poses_matrices[traj_i:traj_i+100, :3, 3]
-        dirs = self.poses_matrices[traj_i:traj_i+100, :3, 2]
+        points = self.poses_matrices[traj_i:traj_i+200, :3, 3]
+        dirs = self.poses_matrices[traj_i:traj_i+200, :3, 2]
         s_cams, s_dirs = geoutil.sample_line_sequence(
             points, dirs, spacing=max_dist / cam_num)
         s_cams = s_cams[:cam_num]
@@ -453,6 +453,24 @@ class SequenceProcessor():
         camK = cam_calib["P_rect_00"]
         camK = normalize_intrinsics(camK, persp_img_size)
         camRT = poses_matrices[traj_i, :3, :4]
+
+        # traj_i = 200
+        # cmp,cmd = sequence_processor.get_next_cameras(traj_i, max_dist=25, cam_num=40)
+        # for i in range(40):
+        #     mat = sequence_processor.poses_matrices[traj_i,:3,:]
+        #     pos = cmp[i]-mat[:,3]
+        #     xx = mat[:,:3].T @ pos[:,None]
+        #     xd = mat[:,:3].T @ cmd[i][:,None]
+        #     xd = xd*.4
+        #     xx = xx.reshape(-1)/25 - np.array([0.,0, 0.99])
+        #     plt.scatter(xx[0],xx[2])
+        #     plt.plot([xx[0], xx[0]+xd[0]],[xx[2], xx[2]+xd[2]])
+        # plt.xlim(-1,1)
+        # plt.ylim(-1,1)
+        # plt.axis('off')
+        # plt.gca().set_aspect('equal')
+        # plt.show()
+
 
         from PIL import Image
         im = Image.fromarray(img)
