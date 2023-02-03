@@ -37,8 +37,8 @@ sequence_processor = SequenceProcessor(kitti360_root, sequence)
 # sequence_processor.setup_visualizer(solid=0.)
 sequence_processor.setup_visualizer(solid=1.)
 imgs = []
-for i in range(0, 100):
-    traj_i = 10500+i  # i*10 +5050 #+ 20*2 + 24*30 + 6485
+for i in range(0, 10):
+    traj_i = 100+i*10  # i*10 +5050 #+ 20*2 + 24*30 + 6485
     sequence_processor.setup_traj(traj_i=traj_i)
     # sequence_processor.show_traj()
     sequence_processor.enable_debug()

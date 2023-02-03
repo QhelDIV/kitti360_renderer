@@ -17,9 +17,9 @@ from kitti360scripts.helpers.project import CameraPerspective
 
 
 class SequenceProcessor():
-    def __init__(self, kitti360_root, sequence):
-        self.kitti360_root = kitti360_root
-        self.sequence = sequence
+    def __init__(self, kitti360_root, sequence, scenebox_height=6):
+        self.__dict__.update(locals())
+        self.cam0_height = 1.55 # https://www.cvlibs.net/datasets/kitti-360/documentation.php#:~:text=and%20vice%20versa.-,Sensor%20Locations,-As%20illustrated%20in
         #self.poses_data = np.loadtxt("%s/data_poses/%s/poses.txt" % (kitti360_root, sequence))
         # cam0_to_world.txt is perspective camera 0 to world, x = right, y = down, z = forward
         self.poses_data = np.loadtxt(
@@ -77,7 +77,7 @@ class SequenceProcessor():
         kmeshes, poses_matrices, aobjtrans, labels = self.kmeshes, self.poses_matrices, self.aobjtrans, self.labels
         self.renderer = renderer = fvis.FresnelRenderer()
         self.fvis_obj_meshes = []
-        self.fvis_obj_visibilities = np.ones(len(kmeshes), dtype=np.bool)
+        self.fvis_obj_visibilities = np.ones(len(kmeshes), dtype=bool)
         for i, (vert, face) in enumerate(kmeshes[:]):
             color = np.array(id2semcolor[labels[i]])/255
             mesh = renderer.add_mesh(vert, face, color=color, solid=solid)
@@ -178,6 +178,7 @@ class SequenceProcessor():
                              'data_rect/%010d.png' % framei)
         else:
             img = plt.imread(self.perspImg0Dir + 'data_rgb/%010d.png' % framei)
+        self.original_persp_img_size = img.shape[:2][::-1]
         if crop_size is not None:
             img = crop_center(img, cropx=crop_size,
                               cropy=crop_size, resize_to=(256, 256))
@@ -281,7 +282,7 @@ class SequenceProcessor():
         return img
 
     def topview_plot(self, vscale=100, traj_i=2, hide_traj=True, hide_vegetation=False, hide_frustum=True,
-                     mode="bottom", show=True):
+                     mode="bottom", resolution=(256, 256), show=True):
 
         if hide_vegetation:
             self.hide_vegetation()
@@ -303,7 +304,7 @@ class SequenceProcessor():
                              camUp=camUp,
                              camHeight=camHeight,
                              fit_camera=False, light_samples=32, samples=32,
-                             resolution=np.array((256, 256))*2
+                             resolution=np.array(resolution)
                              )
         self.renderer.setup_camera(camera_kwargs)
         img = self.renderer.render(preview=True)
@@ -438,12 +439,17 @@ class SequenceProcessor():
         s_cams = s_cams[:cam_num]
         s_dirs = s_dirs[:cam_num]
         s_dirs = s_dirs / np.linalg.norm(s_dirs, axis=1, keepdims=True)
+        out_the_box = np.logical_or(s_cams.min(axis=1) < -1., s_cams.max(axis=1)>1. )
+        print(s_cams)
+        s_cams = s_cams[~out_the_box]
+        print(s_cams.shape)
         if s_cams.shape[0] < cam_num: # if we have less than cam_num cameras, repeat the last one
             rn = cam_num - s_cams.shape[0]
+            rdchoice = np.random.choice(s_cams.shape[0], rn)
             s_cams = np.concatenate(
-                [s_cams, s_cams[-1].reshape(1, 3).repeat(rn, axis=0)], axis=0)
+                [s_cams, s_cams[rdchoice]], axis=0)
             s_dirs = np.concatenate(
-                [s_dirs, s_dirs[-1].reshape(1, 3).repeat(rn, axis=0)], axis=0)
+                [s_dirs, s_dirs[rdchoice]], axis=0)
         return s_cams, s_dirs
 
     def test_output(self, traj_i, vscale=50, outdir="output/"):
@@ -458,7 +464,7 @@ class SequenceProcessor():
         self.disable_debug()
         img = self.get_persp_img(traj_i=traj_i, crop_size=256, show=False)
         camK = self.cam_calib["P_rect_00"]
-        camK = normalize_intrinsics(camK, self.persp_img_size)
+        camK = normalize_intrinsics(camK, self.original_persp_img_size)
         #camRT = self.poses_matrices[traj_i, :3, :4]
 
         # traj_i = 200
@@ -499,19 +505,39 @@ class SequenceProcessor():
         np.savez_compressed(lbdir+"%04d.npz" % 0, camera_coords=camera_coords, target_coords=target_coords, intrinsic = camK,
         layout = sem_img1, layout_noveg = sem_img2,
         layout_vis=img1, layout_noveg_vis=img2)
-
+    def export_next_cams(self, traj_i, cam_num = 40):
+        vscale = self.cam0_height
+        cmp,cmd = self.get_next_cameras(traj_i, max_dist=vscale/1.1, cam_num=cam_num)
+        mat = self.poses_matrices[traj_i,:3,:]
+        mat = (mat.T)[None,...]
+        rot = mat[:,:3,:]
+        pos = (cmp - mat[:,3,:])
+        xx = (rot @ pos[..., None])[...,0]
+        xd = (rot @ cmd[..., None])[...,0]
+        xd = xd * .4
+        xx = xx/vscale*2  - np.array([0.,0.,1.])[None,:]
+        camera_coords = xx
+        target_coords = xx + xd
+        camera_coords[:,1] = self.cam0_height / self.scenebox_height * 2 + (-1)
+        target_coords[:,1] = self.cam0_height / self.scenebox_height * 2 + (-1)
+        return camera_coords, target_coords
         #pimg = self.get_persp_img(traj_i=traj_i, crop_size=256)
     def generate_dataitem(self, traj_i, vscale=50, outdir="output/"):
+        camera_name = self.sequence + "_%08d" % traj_i
+        imdir = outdir + "images/" + camera_name + "/"
+        lbdir = outdir + "labels/" + camera_name + "/"
+        sysutil.mkdirs([imdir, lbdir])
+
         #framei = self.frames[traj_i]
-        seq_outdir = os.path.join(outdir, self.sequence) + "/"
-        traj_outdir = os.path.join(seq_outdir, "%08d" % traj_i) + "/"
-        sysutil.mkdirs([seq_outdir, traj_outdir])
+        #seq_outdir = os.path.join(outdir, self.sequence) + "/"
+        #traj_outdir = os.path.join(seq_outdir, "%08d" % traj_i) + "/"
+        #sysutil.mkdirs([seq_outdir, traj_outdir])
 
         self.setup_traj(traj_i=traj_i)
         self.disable_debug()
         img = self.get_persp_img(traj_i=traj_i, crop_size=256, show=False)
         camK = self.cam_calib["P_rect_00"]
-        camK = normalize_intrinsics(camK, self.persp_img_size)
+        camK = normalize_intrinsics(camK, self.original_persp_img_size)
         #camRT = self.poses_matrices[traj_i, :3, :4]
 
         # traj_i = 200
@@ -526,6 +552,8 @@ class SequenceProcessor():
         xx = xx/vscale*2  - np.array([0.,0.,1.])[None,:]
         camera_coords = xx
         target_coords = xx + xd
+        camera_coords[:,1] = self.cam0_height / self.scenebox_height * 2 + (-1)
+        target_coords[:,1] = self.cam0_height / self.scenebox_height * 2 + (-1)
         # plot script
             # plt.scatter(xx[:,0], xx[:,2], zorder=100)
             # for i in range(len(xx)):
@@ -538,7 +566,7 @@ class SequenceProcessor():
             # plt.show()
 
         import matplotlib.image
-        matplotlib.image.imsave(traj_outdir+"persp_img.png" , img)
+        matplotlib.image.imsave(imdir + "%04d.png"%0 , img)
 
         #img = self.perspect_plot(vscale=1, traj_i=traj_i, if_rectified=True)
         img1 = self.topview_plot(
@@ -549,16 +577,17 @@ class SequenceProcessor():
         sem_img1 = rgbimg2semantics(img1)
         sem_img2 = rgbimg2semantics(img2)
 
-        np.savez_compressed(traj_outdir+"labels.npz", 
+        np.savez_compressed(lbdir + "boxes.npz", 
             camera_coords=camera_coords, target_coords=target_coords, 
             intrinsic = camK, 
-            layout = sem_img1, layout_noveg = sem_img2, )
+            layout = sem_img1[None,...], layout_noveg = sem_img2[None,...], )
         #layout_vis=img1, layout_noveg_vis=img2)
 
         #pimg = self.get_persp_img(traj_i=traj_i, crop_size=256)
     def generate_sequence(self, outdir="output/"):
         for i in sysutil.progbar( range(len(self.frames)) ):
             self.generate_dataitem(i, outdir=outdir)
+            
 
 
 def normalize_intrinsics(K, shape):
@@ -658,6 +687,12 @@ def export_legend(legend, filename="legend.png", expand=[-5, -5, 5, 5]):
 
 if __name__ == "__main__":
     kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
-    processor = DatasetProcessor(kitti360_root)
+    #processor = DatasetProcessor(kitti360_root)
     # processor.render_legend()
-    processor.render_global_views_for_all_tracks()
+    #processor.render_global_views_for_all_tracks()
+
+    kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
+    sequence = "2013_05_28_drive_0000_sync"
+    sequence_processor = SequenceProcessor(kitti360_root, sequence)
+    sequence_processor.generate_sequence()
+
