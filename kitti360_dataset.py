@@ -26,13 +26,23 @@ def vis_video(dset_dir="output",
     #visutil.imgarray2video(targetPath="img2.mp4", img_list=img2s, frameRate=20)
     visutil.imgarray2video(targetPath="imgGrid.mp4", img_list=img1s, frameRate=fps)
 
-def export_ditem(dset_dir="output/export/", 
+def export_ditem(   output_dir="output/export/", 
+                    dset_dir="output",
                     sequence="2013_05_28_drive_0000_sync", 
                     traj_i=100):
-    os.system("mkdir -p %s/images/%s_%08d" % (dset_dir,sequence, traj_i) )
-    os.system("mkdir -p %s/labels/%s_%08d" % (dset_dir,sequence, traj_i) )
-    os.system("cp -p %s/images/%s_%08d/0000.png" % (dset_dir,sequence, traj_i) )
-    os.system("mkdir -p %s/labels/%s_%08d/0000.png" % (dset_dir,sequence, traj_i) )
+    os.system("mkdir -p %s/images/%s_%08d" % (output_dir,sequence, traj_i) )
+    os.system("mkdir -p %s/labels/%s_%08d" % (output_dir,sequence, traj_i) )
+
+    ipath = "%s/images/%s_%08d/0000.png"%(dset_dir, sequence, traj_i)
+    opath = "%s/images/%s_%08d/0000.png"%(output_dir, sequence, traj_i)
+    print(ipath, opath)
+    os.system("cp %s %s" % (ipath, opath) )
+
+    ipath = "%s/labels/%s_%08d/boxes.npz"%(dset_dir, sequence, traj_i)
+    opath = "%s/labels/%s_%08d/boxes.npz"%(output_dir, sequence, traj_i)
+    print(ipath, opath)
+    os.system("cp %s %s" % (ipath, opath) )
+
 def visualize_ditem(dset_dir="output", 
                     sequence="2013_05_28_drive_0000_sync", 
                     traj_i=100):
@@ -57,8 +67,30 @@ def visualize_ditem(dset_dir="output",
     #plt.show()
     print("intrinsic", loaded["intrinsic"])
     return plt.gcf()
+def test_load():
+    loaded = np.load("output/labels/2013_05_28_drive_0000_sync_00000100/boxes.npz")
+    for key in loaded:
+        print(key, loaded[key].shape)
+        print(loaded[key])
+    img = loaded["layout"][0]
+    img = semantics2rgbimg(img, vis_color=True)
+    plt.imshow(img)
+    xx, xt= loaded["camera_coords"], loaded["target_coords"]
+    plt.scatter(xx[:,0], xx[:,2], zorder=100, color='r', s=0.5)
+    for i in range(len(xx)):
+        plt.plot(   [xx[i,0],  xt[i,0]],
+                    [xx[i,2],  xt[i,2]])
+    plt.xlim(-1,1)
+    plt.ylim(-1,1)
+    plt.axis('off')
+    plt.gca().set_aspect('equal')
+    plt.show()
+    print("intrinsic", loaded["intrinsic"])
+    return plt.gcf()
 if __name__ == "__main__":
-    vis_video(trajs=10514, fps=50)
+    #test_load()
+    export_ditem(traj_i=100)
+    #vis_video(trajs=10514, fps=50)
     #visualize_ditem()
     #plt.show()
     #plt.savefig("test.png")

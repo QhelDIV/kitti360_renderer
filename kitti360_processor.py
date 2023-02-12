@@ -17,7 +17,8 @@ from kitti360scripts.helpers.project import CameraPerspective
 
 
 class SequenceProcessor():
-    def __init__(self, kitti360_root, sequence, scenebox_height=6):
+    def __init__(self, kitti360_root, sequence, scenebox_height=6, scenebox_size=(50,50), 
+                output_resolution=(256,256)):
         self.__dict__.update(locals())
         self.cam0_height = 1.55 # https://www.cvlibs.net/datasets/kitti-360/documentation.php#:~:text=and%20vice%20versa.-,Sensor%20Locations,-As%20illustrated%20in
         #self.poses_data = np.loadtxt("%s/data_poses/%s/poses.txt" % (kitti360_root, sequence))
@@ -171,7 +172,7 @@ class SequenceProcessor():
     def show_traj(self):
         self.fvis_traj.enable()
 
-    def get_persp_img(self, traj_i, if_rectified=True, crop_size=256, show=True):
+    def get_persp_img(self, traj_i, if_rectified=True, if_crop=True, resize_to=(256,256), show=True):
         framei = self.frames[traj_i]
         if if_rectified:
             img = plt.imread(self.perspImg0Dir +
@@ -179,10 +180,10 @@ class SequenceProcessor():
         else:
             img = plt.imread(self.perspImg0Dir + 'data_rgb/%010d.png' % framei)
         self.original_persp_img_size = img.shape[:2][::-1]
-        if crop_size is not None:
-            img = crop_center(img, cropx=crop_size,
-                              cropy=crop_size, resize_to=(256, 256))
-            #img = direct_crop(img, crop_size, crop_size)
+        if if_crop:
+            min_dim = min(img.shape[:2])
+            img = direct_crop(img, cropx=min_dim,
+                              cropy=min_dim, resize_to=resize_to)
         self.persp_img_size = img.shape[:2]
         self.image = img
         if show:
@@ -192,10 +193,9 @@ class SequenceProcessor():
             plt.axis('off')
         return img
 
-    def perspect_plot_matplotlib(self, traj_i=0, max_dist=10., cam_id=0):
+    def perspect_plot_matplotlib(self, traj_i=0, max_dist=10., cam_id=0, camera=None):
         from xgutils import geoutil
         frame = self.frames[traj_i]
-        points, depths, tpls = [], [], []
         image = self.image
         plt.imshow(image)  # [:, :, ::-1])
 
@@ -209,6 +209,7 @@ class SequenceProcessor():
         else:
             raise RuntimeError('Invalid Camera ID!')
 
+        points, depths, tpls = [], [], []
         annotation3D = self.annon
         for k, v in annotation3D.objects.items():
             if len(v.keys()) == 1 and (-1 in v.keys()):  # show static only
@@ -439,10 +440,7 @@ class SequenceProcessor():
         s_cams = s_cams[:cam_num]
         s_dirs = s_dirs[:cam_num]
         s_dirs = s_dirs / np.linalg.norm(s_dirs, axis=1, keepdims=True)
-        out_the_box = np.logical_or(s_cams.min(axis=1) < -1., s_cams.max(axis=1)>1. )
-        print(s_cams)
-        s_cams = s_cams[~out_the_box]
-        print(s_cams.shape)
+
         if s_cams.shape[0] < cam_num: # if we have less than cam_num cameras, repeat the last one
             rn = cam_num - s_cams.shape[0]
             rdchoice = np.random.choice(s_cams.shape[0], rn)
@@ -451,63 +449,9 @@ class SequenceProcessor():
             s_dirs = np.concatenate(
                 [s_dirs, s_dirs[rdchoice]], axis=0)
         return s_cams, s_dirs
-
-    def test_output(self, traj_i, vscale=50, outdir="output/"):
-        #framei = self.frames[traj_i]
-        camera_name = self.sequence + "_%08d" % traj_i
-        imdir = outdir + "images/" + camera_name + "/"
-        lbdir = outdir + "labels/" + camera_name + "/"
-        sysutil.mkdirs(imdir)
-        sysutil.mkdirs(lbdir)
-
-        self.setup_traj(traj_i=traj_i)
-        self.disable_debug()
-        img = self.get_persp_img(traj_i=traj_i, crop_size=256, show=False)
-        camK = self.cam_calib["P_rect_00"]
-        camK = normalize_intrinsics(camK, self.original_persp_img_size)
-        #camRT = self.poses_matrices[traj_i, :3, :4]
-
-        # traj_i = 200
-        cmp,cmd = self.get_next_cameras(traj_i, max_dist=25, cam_num=40)
-        mat = self.poses_matrices[traj_i,:3,:]
-        mat = (mat.T)[None,...]
-        rot = mat[:,:3,:]
-        pos = (cmp - mat[:,3,:])
-        xx = (rot @ pos[..., None])[...,0]
-        xd = (rot @ cmd[..., None])[...,0]
-        xd = xd * .4
-        xx = xx/vscale*2  - np.array([0.,0.,1.])[None,:]
-        camera_coords = xx
-        target_coords = xx + xd
-        # plot script
-            # plt.scatter(xx[:,0], xx[:,2], zorder=100)
-            # for i in range(len(xx)):
-            #     plt.plot(   [xx[i,0],  xx[i,0]+xd[i,0]],
-            #                 [xx[i,2],  xx[i,2]+xd[i,2]])
-            # plt.xlim(-1,1)
-            # plt.ylim(-1,1)
-            # plt.axis('off')
-            # plt.gca().set_aspect('equal')
-            # plt.show()
-
-        import matplotlib.image
-        matplotlib.image.imsave(imdir+"%04d.png" % 0, img)
-
-        #img = self.perspect_plot(vscale=1, traj_i=traj_i, if_rectified=True)
-        img1 = self.topview_plot(
-            vscale=50, traj_i=traj_i, hide_vegetation=False, mode="bottom", show=False)
-        img2 = self.topview_plot(
-            vscale=50, traj_i=traj_i, hide_vegetation=True, mode="bottom", show=False)
-        self.unset_traj()
-        sem_img1 = rgbimg2semantics(img1)
-        sem_img2 = rgbimg2semantics(img2)
-
-        np.savez_compressed(lbdir+"%04d.npz" % 0, camera_coords=camera_coords, target_coords=target_coords, intrinsic = camK,
-        layout = sem_img1, layout_noveg = sem_img2,
-        layout_vis=img1, layout_noveg_vis=img2)
-    def export_next_cams(self, traj_i, cam_num = 40):
+    def export_next_cams(self, traj_i, max_length_ratio=.5, cam_num = 40):
         vscale = self.cam0_height
-        cmp,cmd = self.get_next_cameras(traj_i, max_dist=vscale/1.1, cam_num=cam_num)
+        cmp,cmd = self.get_next_cameras(traj_i, max_dist=vscale*max_length_ratio, cam_num=cam_num)
         mat = self.poses_matrices[traj_i,:3,:]
         mat = (mat.T)[None,...]
         rot = mat[:,:3,:]
@@ -520,6 +464,17 @@ class SequenceProcessor():
         target_coords = xx + xd
         camera_coords[:,1] = self.cam0_height / self.scenebox_height * 2 + (-1)
         target_coords[:,1] = self.cam0_height / self.scenebox_height * 2 + (-1)
+
+        out_the_box = np.logical_or(    camera_coords.min(axis=1) < -1., 
+                                        camera_coords.max(axis=1) >  1. )
+        camera_coords = camera_coords[~out_the_box]
+        target_coords = target_coords[~out_the_box]
+        if camera_coords.shape[0] < cam_num:
+            print("Warning: not enough cameras in the scene, repeat some cameras.")
+            rdchoice = np.random.choice(camera_coords.shape[0], cam_num - camera_coords.shape[0], replace=True)
+            camera_coords = np.concatenate([camera_coords, camera_coords[rdchoice]], axis=0)
+            target_coords = np.concatenate([target_coords, target_coords[rdchoice]], axis=0)
+
         return camera_coords, target_coords
         #pimg = self.get_persp_img(traj_i=traj_i, crop_size=256)
     def generate_dataitem(self, traj_i, vscale=50, outdir="output/"):
@@ -535,44 +490,23 @@ class SequenceProcessor():
 
         self.setup_traj(traj_i=traj_i)
         self.disable_debug()
-        img = self.get_persp_img(traj_i=traj_i, crop_size=256, show=False)
+        img = self.get_persp_img(traj_i=traj_i, crop_size=self.scenebox_size[0], show=False)
         camK = self.cam_calib["P_rect_00"]
         camK = normalize_intrinsics(camK, self.original_persp_img_size)
         #camRT = self.poses_matrices[traj_i, :3, :4]
 
         # traj_i = 200
-        cmp,cmd = self.get_next_cameras(traj_i, max_dist=25, cam_num=40)
-        mat = self.poses_matrices[traj_i,:3,:]
-        mat = (mat.T)[None,...]
-        rot = mat[:,:3,:]
-        pos = (cmp - mat[:,3,:])
-        xx = (rot @ pos[..., None])[...,0]
-        xd = (rot @ cmd[..., None])[...,0]
-        xd = xd * .4
-        xx = xx/vscale*2  - np.array([0.,0.,1.])[None,:]
-        camera_coords = xx
-        target_coords = xx + xd
-        camera_coords[:,1] = self.cam0_height / self.scenebox_height * 2 + (-1)
-        target_coords[:,1] = self.cam0_height / self.scenebox_height * 2 + (-1)
-        # plot script
-            # plt.scatter(xx[:,0], xx[:,2], zorder=100)
-            # for i in range(len(xx)):
-            #     plt.plot(   [xx[i,0],  xx[i,0]+xd[i,0]],
-            #                 [xx[i,2],  xx[i,2]+xd[i,2]])
-            # plt.xlim(-1,1)
-            # plt.ylim(-1,1)
-            # plt.axis('off')
-            # plt.gca().set_aspect('equal')
-            # plt.show()
+        camera_coords, target_coords = self.export_next_cams(traj_i, cam_num = 40)
 
         import matplotlib.image
         matplotlib.image.imsave(imdir + "%04d.png"%0 , img)
 
         #img = self.perspect_plot(vscale=1, traj_i=traj_i, if_rectified=True)
+        vscale = self.scenebox_size[0]
         img1 = self.topview_plot(
-            vscale=50, traj_i=traj_i, hide_vegetation=False, mode="bottom", show=False)
+            vscale=vscale, traj_i=traj_i, hide_vegetation=False, mode="bottom", show=False)
         img2 = self.topview_plot(
-            vscale=50, traj_i=traj_i, hide_vegetation=True, mode="bottom", show=False)
+            vscale=vscale, traj_i=traj_i, hide_vegetation=True,  mode="bottom", show=False)
         self.unset_traj()
         sem_img1 = rgbimg2semantics(img1)
         sem_img2 = rgbimg2semantics(img2)
@@ -656,12 +590,19 @@ class DatasetProcessor:
             im = Image.fromarray(img)
             im.save(os.path.join(self.build_dir, "globalview_%s.png" % seq))
 
-
-def direct_crop(img, cropx, cropy):
+import skimage
+def direct_crop(img, cropx, cropy, resize_to=None):
     y, x, c = img.shape
     startx = x//2-(cropx//2)
     starty = y//2-(cropy//2)
-    return img[starty:starty+cropy, startx:startx+cropx]
+    nimg = img[starty:starty+cropy, startx:startx+cropx]
+    if resize_to is not None:
+        # ratio = np.array(resize_to) / nimg.shape[:2]
+        # nimg = ndimage.zoom(nimg, zoom=(*ratio, 1.), order=3)
+        nimg = skimage.transform.resize(nimg, resize_to,
+                       anti_aliasing=False)
+        nimg = np.clip(nimg, 0, 1.)
+    return nimg
 
 
 def crop_center(img, cropx, cropy, resize_to=None):
@@ -694,5 +635,5 @@ if __name__ == "__main__":
     kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
     sequence = "2013_05_28_drive_0000_sync"
     sequence_processor = SequenceProcessor(kitti360_root, sequence)
-    sequence_processor.generate_sequence()
+    sequence_processor.generate_sequence(outdir="output/lowres/")
 
