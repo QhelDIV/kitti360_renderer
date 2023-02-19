@@ -18,7 +18,7 @@ from kitti360scripts.helpers.project import CameraPerspective
 
 class SequenceProcessor():
     def __init__(self, kitti360_root, sequence, scenebox_height=6, scenebox_size=(50,50), 
-                output_resolution=(256,256)):
+                output_resolution=(256,256), persp_img_size=(1408, 376), semantics_resolution=(256, 256)):
         self.__dict__.update(locals())
         self.cam0_height = 1.55 # https://www.cvlibs.net/datasets/kitti-360/documentation.php#:~:text=and%20vice%20versa.-,Sensor%20Locations,-As%20illustrated%20in
         #self.poses_data = np.loadtxt("%s/data_poses/%s/poses.txt" % (kitti360_root, sequence))
@@ -46,6 +46,7 @@ class SequenceProcessor():
             kitti360_root, sequence)
         self.cam_calib = loadPerspectiveIntrinsic(
             "%s/calibration/perspective.txt" % (kitti360_root))
+        self.original_persp_img_size = persp_img_size
         # self.persp
         self.annon = Annotation3D_fixed(
             labelDir=self.labelDir, sequence=sequence)
@@ -155,6 +156,9 @@ class SequenceProcessor():
             self.fvis_obj_meshes[obj_i].enable()
         self.traj_frustum.remove()
         self.traj_mesh.remove()
+        self.next_cams.remove()
+        self.next_cam_dirs.remove()
+        self.ncdheads.remove()
 
     def hide_vegetation(self):
         self.fvis_obj_visibilities[self.is_vegetation] = False
@@ -171,19 +175,30 @@ class SequenceProcessor():
 
     def show_traj(self):
         self.fvis_traj.enable()
-
-    def get_persp_img(self, traj_i, if_rectified=True, if_crop=True, resize_to=(256,256), show=True):
+    def load_persp_img(self, traj_i, if_rectified):
         framei = self.frames[traj_i]
         if if_rectified:
-            img = plt.imread(self.perspImg0Dir +
-                             'data_rect/%010d.png' % framei)
+            img_path = self.perspImg0Dir + 'data_rect/%010d.png' % framei
         else:
-            img = plt.imread(self.perspImg0Dir + 'data_rgb/%010d.png' % framei)
+            img_path = self.perspImg0Dir + 'data_rgb/%010d.png' % framei
+        if not os.path.exists(img_path):
+            print('image not found: %s' % img_path)
+            imsz = self.original_persp_img_size
+            img = np.zeros((imsz[1], imsz[0], 3))
+            return img, False
+        else:
+            img = plt.imread(img_path)
+            return img, True
+    def get_persp_img(self, traj_i, if_rectified=True, if_crop=True, crop_shape=None, resize_to=(256,256), show=True):
+        img, valid = self.load_persp_img(traj_i=traj_i, if_rectified=if_rectified)
         self.original_persp_img_size = img.shape[:2][::-1]
         if if_crop:
             min_dim = min(img.shape[:2])
-            img = direct_crop(img, cropx=min_dim,
-                              cropy=min_dim, resize_to=resize_to)
+            cropx, cropy = min_dim, min_dim
+            if crop_shape is not None:
+                cropx, cropy = crop_shape
+            img = direct_crop(img, cropx=cropx,
+                              cropy=cropy, resize_to=resize_to)
         self.persp_img_size = img.shape[:2]
         self.image = img
         if show:
@@ -191,6 +206,7 @@ class SequenceProcessor():
             ax.imshow(img)
             plt.margins(0, 0)
             plt.axis('off')
+            plt.show()
         return img
 
     def perspect_plot_matplotlib(self, traj_i=0, max_dist=10., cam_id=0, camera=None):
@@ -198,16 +214,16 @@ class SequenceProcessor():
         frame = self.frames[traj_i]
         image = self.image
         plt.imshow(image)  # [:, :, ::-1])
-
-        if cam_id == 0 or cam_id == 1:
-            camera = CameraPerspective(
-                self.kitti360_root, self.sequence, cam_id)
-        # fisheye
-        elif cam_id == 2 or cam_id == 3:
-            camera = CameraFisheye(self.kitti360_root, self.sequence, cam_id)
-            print(camera.fi)
-        else:
-            raise RuntimeError('Invalid Camera ID!')
+        if camera is None:
+            if cam_id == 0 or cam_id == 1:
+                camera = CameraPerspective(
+                    self.kitti360_root, self.sequence, cam_id)
+            # fisheye
+            elif cam_id == 2 or cam_id == 3:
+                camera = CameraFisheye(self.kitti360_root, self.sequence, cam_id)
+                print(camera.fi)
+            else:
+                raise RuntimeError('Invalid Camera ID!')
 
         points, depths, tpls = [], [], []
         annotation3D = self.annon
@@ -219,14 +235,16 @@ class SequenceProcessor():
                 dist = np.linalg.norm(dist, axis=0)
                 if dist > max_dist:
                     continue
-
+                # if not vegetation
+                if  ("vegetation" in id2label[obj3d.semanticId].name):
+                    continue
                 camera(obj3d, frame)
                 vertices = np.asarray(obj3d.vertices_proj).T
                 points.append(np.asarray(obj3d.vertices_proj).T)
                 depths.append(np.asarray(obj3d.vertices_depth))
 
                 sverts = geoutil.sampleMesh(obj3d.vertices.astype(
-                    np.float32), obj3d.faces.astype(np.int32), 1000)
+                    np.float32), obj3d.faces.astype(np.int32), 2000)
                 uv, d = camera.project_vertices(sverts, frame)
                 mask = np.logical_and(np.logical_and(
                     d > 0, uv[0] > 0), uv[1] > 0)
@@ -237,7 +255,7 @@ class SequenceProcessor():
                             obj_color, d[mask].mean()))
         for tpl in tpls:
             plt.plot(tpl[0], tpl[1], color=tpl[2], marker='.', linewidth=0.01,
-                     markersize=2.0, zorder=100 + 1/(tpl[3]+0.001))
+                     markersize=3.0, alpha=.6, zorder=100 + 1/(tpl[3]+0.001))
 
         plt.show()
 
@@ -436,11 +454,11 @@ class SequenceProcessor():
         points = self.poses_matrices[traj_i:traj_i+200, :3, 3]
         dirs = self.poses_matrices[traj_i:traj_i+200, :3, 2]
         s_cams, s_dirs = geoutil.sample_line_sequence(
-            points, dirs, spacing=max_dist / cam_num)
+            points, dirs, spacing=max_dist / (cam_num-1))
         s_cams = s_cams[:cam_num]
         s_dirs = s_dirs[:cam_num]
         s_dirs = s_dirs / np.linalg.norm(s_dirs, axis=1, keepdims=True)
-
+        #print("scams", s_cams)
         if s_cams.shape[0] < cam_num: # if we have less than cam_num cameras, repeat the last one
             rn = cam_num - s_cams.shape[0]
             rdchoice = np.random.choice(s_cams.shape[0], rn)
@@ -450,14 +468,20 @@ class SequenceProcessor():
                 [s_dirs, s_dirs[rdchoice]], axis=0)
         return s_cams, s_dirs
     def export_next_cams(self, traj_i, max_length_ratio=.5, cam_num = 40):
-        vscale = self.cam0_height
+        vscale = self.scenebox_size[0]
         cmp,cmd = self.get_next_cameras(traj_i, max_dist=vscale*max_length_ratio, cam_num=cam_num)
         mat = self.poses_matrices[traj_i,:3,:]
-        mat = (mat.T)[None,...]
-        rot = mat[:,:3,:]
-        pos = (cmp - mat[:,3,:])
-        xx = (rot @ pos[..., None])[...,0]
-        xd = (rot @ cmd[..., None])[...,0]
+        pos = cmp
+        pos = (cmp - mat[None,:,3])
+        rot = mat[:,:3].T
+        import scipy 
+        rotm = scipy.spatial.transform.Rotation.from_matrix(rot)
+        rot = rot[None,:,:]
+        xx = rotm.apply(pos)
+        xd = rotm.apply(cmd)
+        # xx = (rot @ pos[..., None])[...,0]
+        # xd = (rot @ cmd[..., None])[...,0]
+        #xx, xd = pos, cmd
         xd = xd * .4
         xx = xx/vscale*2  - np.array([0.,0.,1.])[None,:]
         camera_coords = xx
@@ -465,10 +489,14 @@ class SequenceProcessor():
         camera_coords[:,1] = self.cam0_height / self.scenebox_height * 2 + (-1)
         target_coords[:,1] = self.cam0_height / self.scenebox_height * 2 + (-1)
 
+        camera_coords[:,[0,1,2]] = camera_coords[:,[0,2,1]]
+        target_coords[:,[0,1,2]] = target_coords[:,[0,2,1]]
+
         out_the_box = np.logical_or(    camera_coords.min(axis=1) < -1., 
                                         camera_coords.max(axis=1) >  1. )
-        camera_coords = camera_coords[~out_the_box]
-        target_coords = target_coords[~out_the_box]
+
+        # camera_coords = camera_coords[~out_the_box]
+        # target_coords = target_coords[~out_the_box]
         if camera_coords.shape[0] < cam_num:
             print("Warning: not enough cameras in the scene, repeat some cameras.")
             rdchoice = np.random.choice(camera_coords.shape[0], cam_num - camera_coords.shape[0], replace=True)
@@ -490,9 +518,11 @@ class SequenceProcessor():
 
         self.setup_traj(traj_i=traj_i)
         self.disable_debug()
-        img = self.get_persp_img(traj_i=traj_i, crop_size=self.scenebox_size[0], show=False)
+        ores = self.output_resolution
+        img = self.get_persp_img(traj_i=traj_i, resize_to=ores, show=False)
         camK = self.cam_calib["P_rect_00"]
         camK = normalize_intrinsics(camK, self.original_persp_img_size)
+        dcamK = denormalize_intrinsics(camK, ores)
         #camRT = self.poses_matrices[traj_i, :3, :4]
 
         # traj_i = 200
@@ -504,9 +534,9 @@ class SequenceProcessor():
         #img = self.perspect_plot(vscale=1, traj_i=traj_i, if_rectified=True)
         vscale = self.scenebox_size[0]
         img1 = self.topview_plot(
-            vscale=vscale, traj_i=traj_i, hide_vegetation=False, mode="bottom", show=False)
+            vscale=vscale, traj_i=traj_i, hide_vegetation=False, mode="bottom", show=False, resolution=self.semantics_resolution)
         img2 = self.topview_plot(
-            vscale=vscale, traj_i=traj_i, hide_vegetation=True,  mode="bottom", show=False)
+            vscale=vscale, traj_i=traj_i, hide_vegetation=True,  mode="bottom", show=False, resolution=self.semantics_resolution)
         self.unset_traj()
         sem_img1 = rgbimg2semantics(img1)
         sem_img2 = rgbimg2semantics(img2)
@@ -514,6 +544,7 @@ class SequenceProcessor():
         np.savez_compressed(lbdir + "boxes.npz", 
             camera_coords=camera_coords, target_coords=target_coords, 
             intrinsic = camK, 
+            denormed_intrinsic = dcamK, 
             layout = sem_img1[None,...], layout_noveg = sem_img2[None,...], )
         #layout_vis=img1, layout_noveg_vis=img2)
 
@@ -521,20 +552,56 @@ class SequenceProcessor():
     def generate_sequence(self, outdir="output/"):
         for i in sysutil.progbar( range(len(self.frames)) ):
             self.generate_dataitem(i, outdir=outdir)
-            
+    def generate_scene_cloud(self, outdir="output/", static=True):
+        annotation3D = self.annon
+        for k, v in annotation3D.objects.items():
+            if not(len(v.keys()) == 1 and (-1 in v.keys())):  # show static only:
+                continue
+            if len(v.keys()) == 1 and (-1 in v.keys()):  # show static only
+                obj3d = v[-1]
+                obj_color = np.array(id2label[obj3d.semanticId].color) / 256.
+                dist = (obj3d.vertices[0] - self.poses_matrices[traj_i, :3, 3])
+                dist = np.linalg.norm(dist, axis=0)
+                if dist > max_dist:
+                    continue
+                # if not vegetation
+                if  ("vegetation" in id2label[obj3d.semanticId].name):
+                    continue
+                camera(obj3d, frame)
+                vertices = np.asarray(obj3d.vertices_proj).T
+                points.append(np.asarray(obj3d.vertices_proj).T)
+                depths.append(np.asarray(obj3d.vertices_depth))
+
+                sverts = geoutil.sampleMesh(obj3d.vertices.astype(
+                    np.float32), obj3d.faces.astype(np.int32), 2000)
+                uv, d = camera.project_vertices(sverts, frame)
+                mask = np.logical_and(np.logical_and(
+                    d > 0, uv[0] > 0), uv[1] > 0)
+                mask = np.logical_and(np.logical_and(
+                    mask, uv[0] < image.shape[1]), uv[1] < image.shape[0])
+                #plt.plot(uv[0][mask], uv[1][mask], 'r.', linewidth=0.3)
+                tpls.append((uv[0][mask], uv[1][mask],
+                            obj_color, d[mask].mean()))
+        for tpl in tpls:
+            plt.plot(tpl[0], tpl[1], color=tpl[2], marker='.', linewidth=0.01,
+                     markersize=3.0, alpha=.6, zorder=100 + 1/(tpl[3]+0.001))
+
+        plt.show()
 
 
 def normalize_intrinsics(K, shape):
     K = K.copy()
-    K[0, :] /= shape[0]
-    K[1, 1] /= shape[0]
+    K[0, 2] /= shape[0]
     K[1, 2] /= shape[1]
+    K[0, 0] /= shape[1]
+    K[1, 1] /= shape[1]
     return K
 def denormalize_intrinsics(K, shape):
     K = K.copy()
-    K[0, :] *= shape[0]
-    K[1, 1] *= shape[0]
+    K[0, 2] *= shape[0]
     K[1, 2] *= shape[1]
+    K[0, 0] *= shape[1]
+    K[1, 1] *= shape[1]
     return K
 
 
@@ -589,7 +656,22 @@ class DatasetProcessor:
             from PIL import Image
             im = Image.fromarray(img)
             im.save(os.path.join(self.build_dir, "globalview_%s.png" % seq))
-
+    def process_all_sequences(self, outdir="output/kitti360_v1/", semantics_resolution=(256,256)):
+        for seq in sysutil.progbar( self.sequences ):
+            print(seq)
+            sequence_processor = SequenceProcessor(kitti360_root, seq, scenebox_height=6, scenebox_size=(50,50), semantics_resolution=semantics_resolution)
+            sequence_processor.generate_sequence(outdir=outdir, )
+    def find_empty_persp_frames(self): # TODO: skipped by using manual filtering
+        outdir = "output/kitti360_v1/filters/inval_stats/"
+        sysutil.mkdir(outdir)
+        for seq in self.sequences:
+            print(seq)
+            sp = SequenceProcessor(self.kitti360_root, seq)
+            valid_frames = np.ones(len(sp.frames), dtype=np.bool)
+            for i in sysutil.progbar( range(len(sp.frames)) ):
+                img, valid = sp.load_persp_img(traj_i, if_crop=False)
+                valid_frames[i] = valid
+            np.save("%s/valid_frames_%s.npy" % (outdir, seq), valid_frames)
 import skimage
 def direct_crop(img, cropx, cropy, resize_to=None):
     y, x, c = img.shape
@@ -627,13 +709,14 @@ def export_legend(legend, filename="legend.png", expand=[-5, -5, 5, 5]):
 
 
 if __name__ == "__main__":
-    kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
-    #processor = DatasetProcessor(kitti360_root)
+    kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360/"
+    processor = DatasetProcessor(kitti360_root)
+    processor.process_all_sequences(outdir="output/kitti360_v1_512/", semantics_resolution=(512,512))
     # processor.render_legend()
     #processor.render_global_views_for_all_tracks()
 
-    kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
-    sequence = "2013_05_28_drive_0000_sync"
-    sequence_processor = SequenceProcessor(kitti360_root, sequence)
-    sequence_processor.generate_sequence(outdir="output/lowres/")
+    # kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
+    # sequence = "2013_05_28_drive_0000_sync"
+    # sequence_processor = SequenceProcessor(kitti360_root, sequence, scenebox_height=6, scenebox_size=(50,50), output_resolution=(256,256))
+    # sequence_processor.generate_sequence(outdir="output/kitti360_v2/", )
 

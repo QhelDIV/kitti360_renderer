@@ -12,7 +12,11 @@ from collections import namedtuple
 #--------------------------------------------------------------------------------
 # Definitions
 #--------------------------------------------------------------------------------
-
+kitti360_sequences = ["0000", "0002", "0003",
+                      "0004", "0005", "0006", "0007", "0009", "0010"]
+kitti360_sequences = ["2013_05_28_drive_%s_sync" %
+                      seq for seq in kitti360_sequences]
+                      
 # a label and all meta information
 Label = namedtuple( 'Label' , [
 

@@ -37,13 +37,14 @@ sequence_processor = SequenceProcessor(kitti360_root, sequence)
 # sequence_processor.setup_visualizer(solid=0.)
 sequence_processor.setup_visualizer(solid=1.)
 imgs = []
-for i in range(0, 10):
-    traj_i = 100+i*10  # i*10 +5050 #+ 20*2 + 24*30 + 6485
+for i in range(130, 150):
+    traj_i=i
+    #traj_i = 100+i*10  # i*10 +5050 #+ 20*2 + 24*30 + 6485
     sequence_processor.setup_traj(traj_i=traj_i)
     # sequence_processor.show_traj()
     sequence_processor.enable_debug()
-    sequence_processor.get_persp_img(traj_i=traj_i, crop_size=None)
-    sequence_processor.get_persp_img(traj_i=traj_i, crop_size=256)
+    #sequence_processor.get_persp_img(traj_i=traj_i, crop_size=None)
+    sequence_processor.get_persp_img(traj_i=traj_i, resize_to=(512, 512), show=False)
     #sequence_processor.perspect_plot_matplotlib(traj_i=traj_i)
     # sequence_processor.get_persp_img(traj_i=traj_i)
     #sequence_processor.get_persp_img(traj_i=traj_i, if_rectified=False)
@@ -51,7 +52,8 @@ for i in range(0, 10):
     #img = sequence_processor.perspect_plot(
     #    vscale=1, traj_i=traj_i, if_rectified=True)
     img = sequence_processor.topview_plot(
-        vscale=50, traj_i=traj_i, hide_frustum=False, mode="bottom", hide_vegetation=True)
+        vscale=50, traj_i=traj_i, hide_frustum=False, mode="bottom", hide_vegetation=True,
+        resolution=(512, 512))
     #img = sequence_processor.topview_plot(vscale=50, traj_i=traj_i, hide_vegetation=True, hide_frustum=False)
 
     #sequence_processor.zoomout_plot(vscale=150, traj_i=traj_i
