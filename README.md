@@ -51,3 +51,11 @@ Since the sampled camera poses maybe very challenging: going out of the scene bo
 - **std_filter**: **basic_filter** + the facing direction should not deviate more than **30** degrees from the original camera facing direction + the sampled camera position should stay in the middle of the scene box (**±.3**)
 - **strict_filter**: **std_filter** with stricter criteria: the facing direction should not deviate more than **15** degrees from the original camera facing direction + the sampled camera position should stay in the middle of the scene box (**±.1**)
 
+## Log
+
+This version (v1) fixed previous errors in the v0 dataset.
+1. The way to crop the rgb image is corrected. Previously, we directly center-cropped the image, which is not correct. Now we crop with maximum height and then rescale the image to 256x256.
+2. The intrinsics are corrected and valided by rendering alignment.
+3. The sampled 40 cameras are corrected (see the video)
+4. We created the filtering list of the dataset. Please check the README.md in the dataset.
+5. We processed all of the sequences in the dataset.
