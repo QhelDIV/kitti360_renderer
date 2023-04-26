@@ -34,7 +34,7 @@ def render_imgs(dset_dir="output",
         loaded = np.load(fpath)
         img2 = loaded["layout"][0]
         img2 = semantics2rgbimg(img2, vis_color=True)
-        img2 = add_traj(img2, loaded["camera_coords"], loaded["target_coords"], resolution = (img2.shape[0], img2.shape[1])
+        img2 = add_traj(img2, loaded["camera_coords"], loaded["target_coords"], resolution = (img2.shape[0], img2.shape[1]))
 
         img2 = img2[:,:,:-1]
         img3 = loaded["layout_noveg"][0]
@@ -264,15 +264,22 @@ def seq_export_filters(dset_dir="output/kitti360_v1",
 # %%
 def combine_all_sequence_filters(dset_dir="output/kitti360_v1"):
     dsetfilts = None
+    df_dict = {}
     for sequence in kitti360_sequences:
         filt = np.load("%s/filters/%s.npz"%(dset_dir, sequence))
         if dsetfilts is None:
             dsetfilts = {k:[] for k in filt}
+            df_dict   = {k:{} for k in filt}
         for k in filt:
             dsetfilts[k].append(filt[k])
+            print(filt[k].shape)
+            for i in range(filt[k].shape[0]):
+                name = "%s_%08d"%(sequence, i)
+                df_dict[k][name] = filt[k][i]
     for k in dsetfilts:
         dsetfilts[k] = np.concatenate(dsetfilts[k])
-    np.savez("%s/filters/dset.npz"%(dset_dir), **dsetfilts)
+    np.savez("%s/filters/dset_array.npz"%(dset_dir), **dsetfilts)
+    np.savez("%s/filters/dset_dict.npz"%(dset_dir), **df_dict)
     # generate infostr, first give the number of camposes
     infostr = "INFO: there are %d camposes in total\n" % (dsetfilts[k].shape[0])
 
@@ -285,12 +292,12 @@ if __name__ == "__main__":
     combine_all_sequence_filters(dset_dir="output/kitti360_v1")
         
     
-    # for sequence in kitti360_sequences:
+    # for sequence in kitti360_sequences[0:1]:
     #     if "0002" not in sequence:
     #         continue
     #     #sequence = "2013_05_28_drive_0003_sync"
     #     print("sequence", sequence)
-    #     filters, _ = seq_export_filters(dset_dir="output/kitti360_v1", sequence=sequence)
+    #     filters, _ = seq_export_filters(dset_dir="output/kitti360_v0", sequence=sequence)
     #     for filter_name in filters:
     #         filters[filter_name] = filters[filter_name]
     #     kept_names = ["full", "basic_filter", "std_filter", "strict_filter"]
