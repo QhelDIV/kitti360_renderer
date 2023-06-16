@@ -4,7 +4,7 @@ The following is a video demo.
 
 
 
-https://github.com/QhelDIV/kitti360_renderer/assets/5100481/aa489962-92a3-4b54-be83-d06cd67a8722
+https://github.com/QhelDIV/kitti360_renderer/assets/5100481/1fbb9b81-d939-4b13-b400-d8ed62b33a5a
 
 
 
