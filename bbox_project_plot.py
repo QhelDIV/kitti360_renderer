@@ -11,7 +11,7 @@ from xgutils import geoutil
 # else:
 #     kitti360Path = os.path.join(os.path.dirname(
 #                             os.path.realpath(__file__)), '..', '..')
-kitti360Path = "/localhome/xya120/studio/sherwin_project/KITTI-360/"
+kitti360Path = "dataset/KITTI-360/"
 seq = 0
 cam_id = 0
 sequence = '2013_05_28_drive_%04d_sync' % seq

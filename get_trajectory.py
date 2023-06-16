@@ -27,7 +27,7 @@ import numpy as np
 #from open3d.web_visualizer import draw
 # %%
 
-kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
+kitti360_root = "dataset/KITTI-360"
 sequence = "2013_05_28_drive_0000_sync"
 sequence_processor = SequenceProcessor(kitti360_root, sequence)
 # sequence_processor.overview_plot(vscale=300)
@@ -71,7 +71,7 @@ loaded = np.load("data/bedrooms_boxes.npz")
 #print(loaded["target_coords"] - loaded["camera_coords"])
 # %%
 
-kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
+kitti360_root = "dataset/KITTI-360"
 sequence = "2013_05_28_drive_0000_sync"
 sys.path.append(kitti360_root)
 poses_data = np.loadtxt("%s/data_poses/%s/poses.txt" %
@@ -83,7 +83,7 @@ np.set_printoptions(suppress=True)
 poses_matrices = poses_data[:, 1:].reshape(-1, 3, 4)
 # %%
 
-#labelDir = '/localhome/xya120/studio/sherwin_project/KITTI-360/data_3d_bboxes/'
+#labelDir = 'dataset/KITTI-360/data_3d_bboxes/'
 labelDir = '%s/3d_bboxes_full/' % kitti360_root
 #labelDir = '%s/3d_bboxes_full/' % kitti360_root
 labelPath = glob.glob(os.path.join(labelDir, '*', '%s.xml' % sequence))

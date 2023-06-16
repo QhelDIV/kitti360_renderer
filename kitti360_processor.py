@@ -709,13 +709,13 @@ def export_legend(legend, filename="legend.png", expand=[-5, -5, 5, 5]):
 
 
 if __name__ == "__main__":
-    kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360/"
+    kitti360_root = "data/KITTI-360/"
     processor = DatasetProcessor(kitti360_root)
     processor.process_all_sequences(outdir="output/kitti360_v1_512/", semantics_resolution=(512,512))
     # processor.render_legend()
     #processor.render_global_views_for_all_tracks()
 
-    # kitti360_root = "/localhome/xya120/studio/sherwin_project/KITTI-360"
+    # kitti360_root = "dataset/KITTI-360"
     # sequence = "2013_05_28_drive_0000_sync"
     # sequence_processor = SequenceProcessor(kitti360_root, sequence, scenebox_height=6, scenebox_size=(50,50), output_resolution=(256,256))
     # sequence_processor.generate_sequence(outdir="output/kitti360_v2/", )

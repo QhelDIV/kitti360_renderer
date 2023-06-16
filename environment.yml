@@ -1,4 +1,4 @@
-name: sherwin
+name: krenderer
 channels:
   - anaconda
   - conda-forge
@@ -192,4 +192,4 @@ dependencies:
       - werkzeug==2.2.2
       - widgetsnbextension==4.0.5
       - zipp==3.11.0
-prefix: /localhome/xya120/anaconda3/envs/sherwin
+
