@@ -1,7 +1,12 @@
 # KITTI360 Renderer
 This repo is to provide tools to render the top-view KITTI360 semantic segmentation.
 The following is a video demo.
-![](media/basic_filter_2013_05_28_drive_0000_sync.mp4)
+
+
+
+https://github.com/QhelDIV/kitti360_renderer/assets/5100481/aa489962-92a3-4b54-be83-d06cd67a8722
+
+
 
 The following is a global 2D semantics of the first KITTI360 scenes.
 ![](media/globalview_2013_05_28_drive_0000_sync.png)
