@@ -290,7 +290,8 @@ def combine_all_sequence_filters(dset_dir="output/kitti360_v1"):
 if __name__ == "__main__":
     
     combine_all_sequence_filters(dset_dir="output/kitti360_v1")
-        
+    # write something
+    
     
     # for sequence in kitti360_sequences[0:1]:
     #     if "0002" not in sequence:
