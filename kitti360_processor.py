@@ -507,8 +507,8 @@ class SequenceProcessor():
         #pimg = self.get_persp_img(traj_i=traj_i, crop_size=256)
     def generate_dataitem(self, traj_i, vscale=50, outdir="output/"):
         camera_name = self.sequence + "_%08d" % traj_i
-        imdir = outdir + "images/" + camera_name + "/"
-        lbdir = outdir + "labels/" + camera_name + "/"
+        imdir = outdir + "/images/" + camera_name + "/"
+        lbdir = outdir + "/labels/" + camera_name + "/"
         sysutil.mkdirs([imdir, lbdir])
 
         #framei = self.frames[traj_i]
@@ -530,7 +530,7 @@ class SequenceProcessor():
 
         import matplotlib.image
         matplotlib.image.imsave(imdir + "%04d.png"%0 , img)
-
+        
         #img = self.perspect_plot(vscale=1, traj_i=traj_i, if_rectified=True)
         vscale = self.scenebox_size[0]
         img1 = self.topview_plot(
@@ -659,7 +659,7 @@ class DatasetProcessor:
     def process_all_sequences(self, outdir="output/kitti360_v1/", semantics_resolution=(256,256)):
         for seq in sysutil.progbar( self.sequences ):
             print(seq)
-            sequence_processor = SequenceProcessor(kitti360_root, seq, scenebox_height=6, scenebox_size=(50,50), semantics_resolution=semantics_resolution)
+            sequence_processor = SequenceProcessor(self.kitti360_root, seq, scenebox_height=6, scenebox_size=(50,50), semantics_resolution=semantics_resolution)
             sequence_processor.generate_sequence(outdir=outdir, )
     def find_empty_persp_frames(self): # TODO: skipped by using manual filtering
         outdir = "output/kitti360_v1/filters/inval_stats/"

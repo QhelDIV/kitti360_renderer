@@ -12,7 +12,8 @@ The following is a global 2D semantics of the first KITTI360 scenes.
 ![](media/globalview_2013_05_28_drive_0000_sync.png)
 
 # Usage
-After downloading KITTI 360 `data_2d_raw`, `data_poses` `3d_bboxes_full` (compare to `3d_bboxes`, `3d_bboxes_full` includes ground objects as well, which is desirable in our case), you can run `python kitti360_processor.py` to start process the sequences.
+After downloading KITTI 360 `data_2d_raw`, `data_poses` `3d_bboxes_full` (compare to `3d_bboxes`, `3d_bboxes_full` includes ground objects as well, which is desirable in our case), you can run `python kitti360_processor.py` to start process the sequences. After that, you will have all data generated for all frames. Then you may want to filter out some 'bad' frames like car-backing frames. To do this, see `main.py`.
+
 Also, you can check at `console.ipynb` to see some use cases.
 
 # Challenges of KITTI360 dataset

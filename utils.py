@@ -123,6 +123,6 @@ def count_all_labels(labelDir):
     return dframe
     #annotation = Annotation3D_fixed(labelPath)
     #print(annotation.num_bbox)
-dframe = count_all_labels("dataset/KITTI-360/3d_bboxes_full/train_full")
+dframe = count_all_labels("data/KITTI-360/3d_bboxes_full/train_full")
 
 # %%
